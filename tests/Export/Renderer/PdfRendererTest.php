@@ -9,6 +9,7 @@
 
 namespace App\Tests\Export\Renderer;
 
+use App\Configuration\ExportConfiguration;
 use App\Entity\User;
 use App\Export\Renderer\PDFRenderer;
 use App\Repository\UserRepository;
@@ -47,7 +48,8 @@ class PdfRendererTest extends AbstractRendererTest
         $sut = new PDFRenderer(
             $this->getMockBuilder(Environment::class)->disableOriginalConstructor()->getMock(),
             $this->getDateTimeFactory(),
-            $this->getMockBuilder(HtmlToPdfConverter::class)->getMock()
+            $this->getMockBuilder(HtmlToPdfConverter::class)->getMock(),
+            $this->getMockBuilder(ExportConfiguration::class)->disableOriginalConstructor()->getMock()
         );
 
         $this->assertEquals('pdf', $sut->getId());
@@ -67,7 +69,11 @@ class PdfRendererTest extends AbstractRendererTest
         $request->setLocale('en');
         $stack->push($request);
 
-        $sut = new PDFRenderer($twig, $this->getDateTimeFactory(), $converter);
+        $sut = new PDFRenderer(
+            $twig,
+            $this->getDateTimeFactory(),
+            $converter,
+            $this->getMockBuilder(ExportConfiguration::class)->disableOriginalConstructor()->getMock());
 
         $response = $this->render($sut);
 
