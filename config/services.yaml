@@ -53,6 +53,10 @@ services:
         arguments:
             $settings: "%kimai.timesheet%"
 
+    App\Configuration\ExportConfiguration:
+        arguments:
+            $settings: "%kimai.export%"
+
     App\Configuration\FormConfiguration:
         arguments:
             $settings: "%kimai.defaults%"

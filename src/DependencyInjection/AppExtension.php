@@ -57,6 +57,8 @@ class AppExtension extends Extension
 
         $container->setParameter('kimai.config', $config);
 
+        $container->setParameter('kimai.export', $config['export']);
+
         $container->setParameter('kimai.timesheet', $config['timesheet']);
         $container->setParameter('kimai.timesheet.rates', $config['timesheet']['rates']);
         $container->setParameter('kimai.timesheet.rounding', $config['timesheet']['rounding']);

@@ -69,7 +69,9 @@ mpdf-->
         <td>{{ 'label.customer'|trans }}</td>
         <td>{{ 'label.project'|trans }}</td>
         <td>{{ 'label.duration'|trans }}</td>
-        <td>{{ 'label.rate'|trans }}</td>
+        {% if display_cost %}
+            <td>{{ 'label.rate'|trans }}</td>
+        {% endif %}
     </tr>
     </thead>
     <tbody>
@@ -99,7 +101,9 @@ mpdf-->
             <td>{{ summary.customer }}</td>
             <td>{{ summary.project }}</td>
             <td class="duration">{{ summary.duration|duration }}</td>
-            <td class="cost">{{ summary.rate|money(summary.currency) }}</td>
+            {% if display_cost == true %}
+                <td class="cost">{{ summary.rate|money(summary.currency) }}</td>
+            {% endif %}
         </tr>
         {% set customerDuration = customerDuration + summary.duration %}
         {% set customerRate = customerRate + summary.rate %}
@@ -109,7 +113,9 @@ mpdf-->
     <tr class="summary">
         <td colspan="2"></td>
         <td class="totals duration">{{ customerDuration|duration }}</td>
-        <td class="totals cost">{{ customerRate|money(customerCurrency) }}</td>
+        {% if display_cost == true %}
+            <td class="totals cost">{{ customerRate|money(customerCurrency) }}</td>
+        {% endif %}
     </tr>
     {% endif %}
     </tbody>
@@ -128,7 +134,9 @@ mpdf-->
         <td>{{ 'label.date'|trans }}</td>
         <td width="">{{ 'label.description'|trans }}</td>
         <td>{{ 'label.duration'|trans }}</td>
-        <td>{{ 'label.rate'|trans }}</td>
+        {% if display_cost == true %}
+            <td>{{ 'label.rate'|trans }}</td>
+        {% endif %}
     </tr>
     </thead>
     <tbody>
@@ -155,13 +163,17 @@ mpdf-->
                 {% endif %}
             </td>
             <td class="duration">{{ entry.duration|duration }}</td>
-            <td class="cost">{{ entry.rate|money(entry.project.customer.currency) }}</td>
+            {% if display_cost == true %}
+                <td class="cost">{{ entry.rate|money(entry.project.customer.currency) }}</td>
+            {% endif %}
         </tr>
     {% endfor %}
     <tr class="summary">
         <td colspan="2"></td>
         <td class="totals duration">{{ duration|duration }}</td>
-        <td class="totals cost">{{ rate|money(currency) }}</td>
+        {% if display_cost == true %}
+            <td class="totals cost">{{ rate|money(currency) }}</td>
+        {% endif %}
     </tr>
     </tbody>
 </table>

@@ -50,6 +50,7 @@ class Configuration implements ConfigurationInterface
                         ->thenInvalid('Plugin directory does not exist')
                     ->end()
                 ->end()
+                ->append($this->getExportNode())
                 ->append($this->getUserNode())
                 ->append($this->getTimesheetNode())
                 ->append($this->getInvoiceNode())
@@ -184,6 +185,26 @@ class Configuration implements ConfigurationInterface
                         ->booleanNode('allow_future_times')
                             ->defaultTrue()
                         ->end()
+                    ->end()
+                ->end()
+            ->end()
+        ;
+
+        return $node;
+    }
+
+    protected function getExportNode()
+    {
+        $builder = new TreeBuilder('export');
+        $node = $builder->getRootNode();
+
+        $node
+            ->addDefaultsIfNotSet()
+            ->children()
+                ->arrayNode('pdf')
+                    ->children()
+                        ->booleanNode('display_cost')
+                            ->defaultValue(true)
                     ->end()
                 ->end()
             ->end()

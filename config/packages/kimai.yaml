@@ -64,6 +64,14 @@ kimai:
             # whether records in the future can be created
             allow_future_times: true
 
+    # --------------------------------------------------------------------------------
+    # All configs related to timesheet and record management
+    export:
+
+        pdf:
+            # display the "cost" column within the PDF export
+            display_cost: true
+
 
     # --------------------------------------------------------------------------------
     # Invoice management

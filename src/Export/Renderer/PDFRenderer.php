@@ -9,6 +9,7 @@
 
 namespace App\Export\Renderer;
 
+use App\Configuration\ExportConfiguration;
 use App\Entity\Timesheet;
 use App\Export\RendererInterface;
 use App\Repository\Query\TimesheetQuery;
@@ -34,17 +35,22 @@ class PDFRenderer implements RendererInterface
      * @var HtmlToPdfConverter
      */
     protected $converter;
+    /**
+     * @var \App\Configuration\ExportConfiguration
+     */
+    private $exportConfiguration;
 
     /**
      * @param Environment $twig
      * @param UserDateTimeFactory $dateTime
      * @param HtmlToPdfConverter $converter
      */
-    public function __construct(Environment $twig, UserDateTimeFactory $dateTime, HtmlToPdfConverter $converter)
+    public function __construct(Environment $twig, UserDateTimeFactory $dateTime, HtmlToPdfConverter $converter, ExportConfiguration $exportConfiguration)
     {
         $this->twig = $twig;
         $this->dateTime = $dateTime;
         $this->converter = $converter;
+        $this->exportConfiguration = $exportConfiguration;
     }
 
     /**
@@ -62,6 +68,7 @@ class PDFRenderer implements RendererInterface
             'query' => $query,
             'now' => $this->dateTime->createDateTime(),
             'summaries' => $this->calculateSummary($timesheets),
+            'display_cost' => $this->exportConfiguration->doDisplayCostOnPdf()
         ]);
 
         $content = $this->converter->convertToPdf($content);
