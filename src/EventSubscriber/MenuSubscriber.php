@@ -71,6 +71,9 @@ class MenuSubscriber implements EventSubscriberInterface
             $menu->addItem(
                 new MenuItemModel('timesheet', 'menu.timesheet', 'timesheet', [], 'fas fa-clock')
             );
+            $menu->addItem(
+                new MenuItemModel('calendar', 'calendar.title', 'calendar', [], 'far fa-calendar-alt')
+            );
         }
 
         if ($auth->isGranted('view_invoice')) {
@@ -114,6 +117,12 @@ class MenuSubscriber implements EventSubscriberInterface
         if ($auth->isGranted('view_activity')) {
             $menu->addChild(
                 new MenuItemModel('activity_admin', 'menu.admin_activity', 'admin_activity', [], 'fas fa-tasks')
+            );
+        }
+
+        if ($auth->isGranted('view_tag')) {
+            $menu->addChild(
+                new MenuItemModel('tags', 'menu.tags', 'tags', [], 'fas fa-tags')
             );
         }
     }

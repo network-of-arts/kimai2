@@ -71,7 +71,7 @@ class Extensions extends AbstractExtension
         'project' => 'fas fa-project-diagram',
         'repeat' => 'fas fa-redo-alt',
         'start' => 'fas fa-play-circle',
-        'start-small' => 'fas fa-play-circle',
+        'start-small' => 'far fa-play-circle',
         'stop' => 'fas fa-stop',
         'stop-small' => 'far fa-stop-circle',
         'timesheet' => 'fas fa-clock',
@@ -93,6 +93,9 @@ class Extensions extends AbstractExtension
         'debug' => 'far fa-file-alt',
         'profile-stats' => 'far fa-chart-bar',
         'profile' => 'fas fa-user-edit',
+        'warning' => 'fas fa-exclamation-triangle',
+        'permissions' => 'fas fa-user-lock',
+        'back' => 'fas fa-long-arrow-alt-left',
     ];
 
     /**

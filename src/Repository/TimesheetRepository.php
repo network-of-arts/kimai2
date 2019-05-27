@@ -76,7 +76,7 @@ class TimesheetRepository extends AbstractRepository
 
         $entityManager = $this->getEntityManager();
         $entityManager->persist($entry);
-        $entityManager->flush();
+        $entityManager->flush($entry);
 
         return true;
     }
@@ -212,13 +212,13 @@ class TimesheetRepository extends AbstractRepository
 
         $qb->select('SUM(t.rate) as rate, SUM(t.duration) as duration, MONTH(t.begin) as month, YEAR(t.begin) as year')
             ->from(Timesheet::class, 't')
-            ->where($qb->expr()->gt('t.begin', ':from'))
         ;
 
         if (!empty($begin)) {
+            $qb->where($qb->expr()->gt('t.begin', ':from'));
             $qb->setParameter('from', $begin, Type::DATETIME);
         } else {
-            $qb->setParameter('from', 0);
+            $qb->where($qb->expr()->isNotNull('t.begin'));
         }
 
         if (!empty($end)) {
@@ -274,7 +274,7 @@ class TimesheetRepository extends AbstractRepository
             ->join('t.activity', 'a')
             ->join('t.project', 'p')
             ->join('p.customer', 'c')
-            ->where($qb->expr()->gt('t.begin', '0'))
+            ->where($qb->expr()->isNotNull('t.begin'))
             ->andWhere($qb->expr()->isNull('t.end'))
             ->orderBy('t.begin', 'DESC');
 
@@ -332,12 +332,13 @@ class TimesheetRepository extends AbstractRepository
     {
         $qb = $this->getEntityManager()->createQueryBuilder();
 
-        $qb->select('t', 'a', 'p', 'c', 'u')
+        $qb->select('t', 'a', 'p', 'c', 'u', 'tags')
             ->from(Timesheet::class, 't')
             ->leftJoin('t.activity', 'a')
             ->leftJoin('t.user', 'u')
             ->leftJoin('t.project', 'p')
             ->leftJoin('p.customer', 'c')
+            ->leftJoin('t.tags', 'tags')
             ->orderBy('t.' . $query->getOrderBy(), $query->getOrder());
 
         if (null !== $query->getUser()) {
@@ -382,6 +383,70 @@ class TimesheetRepository extends AbstractRepository
             }
         }
 
+        $tags = $query->getTags();
+        if (!empty($tags)) {
+            $qb->andWhere($qb->expr()->isMemberOf(':tags', 't.tags'))
+                ->setParameter('tags', $query->getTags());
+        }
+
         return $this->getBaseQueryResult($qb, $query);
+    }
+
+    /**
+     * @param User|null $user
+     * @param DateTime|null $startFrom
+     * @param int $limit
+     * @return array|mixed
+     * @throws \Doctrine\ORM\Query\QueryException
+     */
+    public function getRecentActivities(User $user = null, \DateTime $startFrom = null, $limit = 10)
+    {
+        $qb = $this->getEntityManager()->createQueryBuilder();
+
+        $qb->select($qb->expr()->max('t.id') . ' AS maxid')
+            ->from(Timesheet::class, 't')
+            ->indexBy('t', 't.id')
+            ->join('t.activity', 'a')
+            ->join('t.project', 'p')
+            ->join('p.customer', 'c')
+            ->andWhere($qb->expr()->isNotNull('t.end'))
+            ->andWhere($qb->expr()->eq('a.visible', ':visible'))
+            ->andWhere($qb->expr()->eq('p.visible', ':visible'))
+            ->andWhere($qb->expr()->eq('c.visible', ':visible'))
+            ->groupBy('a.id', 'p.id')
+            ->orderBy('maxid', 'DESC')
+            ->setMaxResults($limit)
+            ->setParameter('visible', true, \PDO::PARAM_BOOL)
+        ;
+
+        if (null !== $user) {
+            $qb->andWhere('t.user = :user')
+                ->setParameter('user', $user);
+        }
+
+        if (null !== $startFrom) {
+            $qb->andWhere($qb->expr()->gt('t.begin', ':begin'))
+                ->setParameter('begin', $startFrom);
+        }
+
+        $results = $qb->getQuery()->getScalarResult();
+
+        if (empty($results)) {
+            return [];
+        }
+
+        $ids = array_column($results, 'maxid');
+
+        $qb = $this->getEntityManager()->createQueryBuilder();
+        $qb->select('t', 'a', 'p', 'c')
+            ->from(Timesheet::class, 't')
+            ->join('t.activity', 'a')
+            ->join('t.project', 'p')
+            ->join('p.customer', 'c')
+            ->andWhere($qb->expr()->in('t.id', $ids))
+            ->orderBy('t.end', 'DESC')
+        ;
+
+        return $qb->getQuery()->getResult();
     }
 }

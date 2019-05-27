@@ -81,9 +81,9 @@ class Configuration implements ConfigurationInterface
                     ->defaultValue('default')
                     ->validate()
                         ->ifTrue(function ($value) {
-                            return !in_array($value, ['default', 'duration_only']);
+                            return !in_array($value, ['default', 'duration_only', 'punch']);
                         })
-                        ->thenInvalid('Chosen timesheet mode is invalid, allowed values: default, duration_only')
+                        ->thenInvalid('Chosen timesheet mode is invalid, allowed values: default, duration_only, punch')
                     ->end()
                 ->end()
                 ->booleanNode('markdown_content')
@@ -223,7 +223,6 @@ class Configuration implements ConfigurationInterface
             ->children()
                 ->arrayNode('documents')
                     ->requiresAtLeastOneElement()
-                    ->isRequired()
                     ->scalarPrototype()->end()
                     ->defaultValue([
                         'var/invoices/',
@@ -265,6 +264,7 @@ class Configuration implements ConfigurationInterface
         $node = $builder->getRootNode();
 
         $node
+            ->addDefaultsIfNotSet()
             ->children()
                 ->booleanNode('week_numbers')->defaultTrue()->end()
                 ->integerNode('day_limit')->defaultValue(4)->end()
@@ -278,6 +278,13 @@ class Configuration implements ConfigurationInterface
                         ->end()
                         ->scalarNode('begin')->defaultValue('08:00')->end()
                         ->scalarNode('end')->defaultValue('20:00')->end()
+                    ->end()
+                ->end()
+                ->arrayNode('visibleHours')
+                    ->addDefaultsIfNotSet()
+                    ->children()
+                        ->scalarNode('begin')->defaultValue('00:00')->end()
+                        ->scalarNode('end')->defaultValue('24:00')->end()
                     ->end()
                 ->end()
                 ->arrayNode('google')
@@ -296,6 +303,7 @@ class Configuration implements ConfigurationInterface
                         ->end()
                     ->end()
                 ->end()
+                ->booleanNode('weekends')->defaultTrue()->end()
             ->end()
         ;
 
@@ -316,6 +324,7 @@ class Configuration implements ConfigurationInterface
                 ->end()
                 ->scalarNode('box_color')
                     ->defaultValue('green')
+                    ->setDeprecated('The node "%node%" at path "%path%" was removed, please delete it from your config.')
                 ->end()
                 ->scalarNode('select_type')
                     ->defaultNull()
@@ -446,7 +455,6 @@ class Configuration implements ConfigurationInterface
                 ->arrayNode('sets')
                     ->requiresAtLeastOneElement()
                     ->useAttributeAsKey('key')
-                    ->performNoDeepMerging()
                     ->arrayPrototype()
                         ->useAttributeAsKey('key')
                         ->isRequired()
@@ -457,7 +465,6 @@ class Configuration implements ConfigurationInterface
                 ->arrayNode('maps')
                     ->requiresAtLeastOneElement()
                     ->useAttributeAsKey('key')
-                    ->performNoDeepMerging()
                     ->arrayPrototype()
                         ->useAttributeAsKey('key')
                         ->isRequired()
@@ -468,13 +475,18 @@ class Configuration implements ConfigurationInterface
                 ->arrayNode('roles')
                     ->requiresAtLeastOneElement()
                     ->useAttributeAsKey('key')
-                    ->performNoDeepMerging()
                     ->arrayPrototype()
                         ->useAttributeAsKey('key')
                         ->isRequired()
                         ->prototype('scalar')->end()
                         ->defaultValue([])
                     ->end()
+                    ->defaultValue([
+                        'ROLE_USER' => [],
+                        'ROLE_TEAMLEAD' => [],
+                        'ROLE_ADMIN' => [],
+                        'ROLE_SUPER_ADMIN' => [],
+                    ])
                 ->end()
             ->end()
         ;

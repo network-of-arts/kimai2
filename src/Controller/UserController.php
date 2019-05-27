@@ -14,6 +14,7 @@ use App\Entity\User;
 use App\Form\Toolbar\UserToolbarForm;
 use App\Form\UserCreateType;
 use App\Repository\Query\UserQuery;
+use App\Security\RolePermissionManager;
 use Pagerfanta\Pagerfanta;
 use Sensio\Bundle\FrameworkExtraBundle\Configuration\Security;
 use Symfony\Component\HttpFoundation\Request;
@@ -140,7 +141,13 @@ class UserController extends AbstractController
         // $userToDelete MUST not be called $user, as $user is always the current user!
         $stats = $this->getDoctrine()->getRepository(Timesheet::class)->getUserStatistics($userToDelete);
 
-        $deleteForm = $this->createFormBuilder()
+        $deleteForm = $this->createFormBuilder(null, [
+                'attr' => [
+                    'data-form-event' => 'kimai.userUpdate kimai.userDelete',
+                    'data-msg-success' => 'action.delete.success',
+                    'data-msg-error' => 'action.delete.error',
+                ]
+            ])
             ->setAction($this->generateUrl('admin_user_delete', ['id' => $userToDelete->getId()]))
             ->setMethod('POST')
             ->getForm();
@@ -165,6 +172,22 @@ class UserController extends AbstractController
                 'form' => $deleteForm->createView(),
             ]
         );
+    }
+
+    /**
+     * @Route(path="/permissions", name="admin_user_permissions", methods={"GET", "POST"})
+     * @Security("is_granted('role_permissions')")
+     *
+     * @param RolePermissionManager $manager
+     * @return \Symfony\Component\HttpFoundation\Response
+     */
+    public function permissions(RolePermissionManager $manager)
+    {
+        return $this->render('user/permissions.html.twig', [
+            'roles' => $manager->getRoles(),
+            'permissions' => $manager->getPermissions(),
+            'manager' => $manager,
+        ]);
     }
 
     /**

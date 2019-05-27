@@ -45,6 +45,14 @@
                 <source>delete.not_in_use</source>
                 <target state="translated">Det här objektet kan raderas säkert.</target>
             </trans-unit>
+            <trans-unit id="cancel">
+                <source>cancel</source>
+                <target state="translated">Avbryt</target>
+            </trans-unit>
+            <trans-unit id="confirm">
+                <source>confirm</source>
+                <target state="translated">Utför</target>
+            </trans-unit>
 
             <!--
               Login / Security
@@ -590,6 +598,18 @@ För närvarande har %user% användare %records% tidsrekord som räknas upp till
             </trans-unit>
 
             <!--
+              Admin: Plugins
+            -->
+            <trans-unit id="label.version">
+                <source>label.version</source>
+                <target>Version</target>
+            </trans-unit>
+            <trans-unit id="label.required_version">
+                <source>label.required_version</source>
+                <target state="translated">Kompatibel med</target>
+            </trans-unit>
+
+            <!--
               ROLES
             -->
             <trans-unit id="ROLE_SUPER_ADMIN">
@@ -607,10 +627,6 @@ För närvarande har %user% användare %records% tidsrekord som räknas upp till
             <trans-unit id="ROLE_USER">
                 <source>ROLE_USER</source>
                 <target state="translated">Användare</target>
-            </trans-unit>
-            <trans-unit id="ROLE_CUSTOMER">
-                <source>ROLE_CUSTOMER</source>
-                <target state="translated">Kund</target>
             </trans-unit>
 
             <!--
@@ -719,10 +735,6 @@ För närvarande har %user% användare %records% tidsrekord som räknas upp till
             <trans-unit id="invoice.preview">
                 <source>invoice.preview</source>
                 <target state="translated">Detta är en förhandsvisning av de data som kommer att visas i ditt fakturatokument.</target>
-            </trans-unit>
-            <trans-unit id="invoice_renderer.timesheet">
-                <source>invoice_renderer.timesheet</source>
-                <target>Foo</target>
             </trans-unit>
 
             <trans-unit id="button.print">
@@ -931,18 +943,9 @@ För närvarande har %user% användare %records% tidsrekord som räknas upp till
             <!--
              Navbar - recent entries and activities
             -->
-            <trans-unit id="active.entries">
-                <source>active.entries</source>
-                <target state="translated">Du har %count% aktiv post | Du har %count% aktiva poster</target>
-            </trans-unit>
             <trans-unit id="timesheet.all">
                 <source>timesheet.all</source>
                 <target state="translated">Visa alla Poster</target>
-            </trans-unit>
-            <trans-unit id="recent.activities">
-                <source>recent.activities</source>
-                <target state="translated">
-Starta din senaste registrerade aktiviteten|starta en av dina %count% sista aktiviteter</target>
             </trans-unit>
             <trans-unit id="recent.activities.format">
                 <source>recent.activities.format</source>

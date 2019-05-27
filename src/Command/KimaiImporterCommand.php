@@ -37,6 +37,7 @@ use Symfony\Component\Validator\Validator\ValidatorInterface;
  * Command used to import data from a Kimai v1 installation.
  * Getting help in improving this script would be fantastic, it currently only handles the most basic use-cases.
  *
+ * This command is way to messy and complex to be tested ... so we use something, which I actually don't like:
  * @codeCoverageIgnore
  */
 class KimaiImporterCommand extends Command
@@ -1108,7 +1109,7 @@ class KimaiImporterCommand extends Command
             $io->error('Found invalid mapped project - activity combinations in these old timesheet recors: ' . implode(',', $errors['projectActivityMismatch']));
         }
         if ($failed > 0) {
-            $io->error(sprintf('Failed importing %s timesheet records', count($failed)));
+            $io->error(sprintf('Failed importing %s timesheet records', $failed));
         }
 
         return $counter;
