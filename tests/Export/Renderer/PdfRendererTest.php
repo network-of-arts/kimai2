@@ -73,7 +73,8 @@ class PdfRendererTest extends AbstractRendererTest
             $twig,
             $this->getDateTimeFactory(),
             $converter,
-            $this->getMockBuilder(ExportConfiguration::class)->disableOriginalConstructor()->getMock());
+            $this->getMockBuilder(ExportConfiguration::class)->disableOriginalConstructor()->getMock()
+        );
 
         $response = $this->render($sut);
 
