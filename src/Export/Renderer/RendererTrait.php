@@ -72,9 +72,11 @@ trait RendererTrait
             }
 
             $customerName = $timesheet->getProject()->getCustomer()->getName();
-            $projectName = sprintf('%s / %s',
+            $projectName = sprintf(
+                '%s / %s',
                 $customerName,
-                $timesheet->getProject()->getName());
+                $timesheet->getProject()->getName()
+            );
 
             if (!isset($summary[$id]['customers'][$customerName])) {
                 $summary[$id]['customers'][$customerName] = 0;
