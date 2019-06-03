@@ -89,7 +89,9 @@ mpdf-->
                 <tr class="summary">
                     <td colspan="2"></td>
                     <td class="totals duration">{{ customerDuration|duration }}</td>
-                    <td class="totals cost">{{ customerRate|money(customerCurrency) }}</td>
+                    {% if display_cost == true %}
+                        <td class="totals cost">{{ customerRate|money(customerCurrency) }}</td>
+                    {% endif %}
                 </tr>
             {% set customerCurrency = summary.currency %}
             {% set customer = summary.customer %}
@@ -120,6 +122,80 @@ mpdf-->
     {% endif %}
     </tbody>
 </table>
+
+<pagebreak>
+
+<h3>{{ 'export.user_summary_by_customer'|trans }}</h3>
+<table class="items" width="100%" style="font-size: 9pt; border-collapse: collapse; " cellpadding="8">
+    <thead>
+    <tr>
+        <td width="80%">{{ 'label.customer'|trans }}</td>
+        <td>{{ 'label.duration'|trans }}</td>
+    </tr>
+    </thead>
+        {% set totalDuration = 0 %}
+    {% for username, summary in user_summary %}}
+        <tbody>
+        <tr>
+            <td style="text-align: left; font-variant: small-caps; background-color: #ececec">
+                <b>{{ username }}</b>
+            </td>
+            <td style="background-color: #ececec">&nbsp;</td>
+        </tr>
+        {% set index = 0 %}
+        {% for customer, duration in summary.customers %}
+            <tr class="{{ cycle(['odd', 'even'], index) }}">
+                <td>{{ customer }}</td>
+                <td class="duration">{{ duration|duration }}</td>
+            </tr>
+        {% endfor %}
+        {% set totalDuration = totalDuration + summary.duration %}
+        {% set index = index + 1 %}
+        </tbody>
+    {% endfor %}
+    <tbody>
+    <tr class="summary">
+        <td></td>
+        <td class="totals duration">{{ totalDuration|duration }}</td>
+    </tr>
+    </tbody>
+</table>
+
+    <h3>{{ 'export.user_summary_by_project'|trans }}</h3>
+    <table class="items" width="100%" style="font-size: 9pt; border-collapse: collapse; " cellpadding="8">
+        <thead>
+        <tr>
+            <td width="80%">{{ 'label.project'|trans }}</td>
+            <td>{{ 'label.duration'|trans }}</td>
+        </tr>
+        </thead>
+        {% set totalDuration = 0 %}
+        {% for username, summary in user_summary %}}
+            <tbody>
+            <tr>
+                <td style="text-align: left; font-variant: small-caps; background-color: #ececec">
+                    <b>{{ username }}</b>
+                </td>
+                <td style="background-color: #ececec">&nbsp;</td>
+            </tr>
+            {% set index = 0 %}
+            {% for customer, duration in summary.projects %}
+                <tr class="{{ cycle(['odd', 'even'], index) }}">
+                    <td>{{ customer }}</td>
+                    <td class="duration">{{ duration|duration }}</td>
+                </tr>
+            {% endfor %}
+            {% set totalDuration = totalDuration + summary.duration %}
+            {% set index = index + 1 %}
+            </tbody>
+        {% endfor %}
+        <tbody>
+        <tr class="summary">
+            <td></td>
+            <td class="totals duration">{{ totalDuration|duration }}</td>
+        </tr>
+        </tbody>
+    </table>
 
 <pagebreak>
 

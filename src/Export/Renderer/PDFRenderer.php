@@ -68,6 +68,7 @@ class PDFRenderer implements RendererInterface
             'query' => $query,
             'now' => $this->dateTime->createDateTime(),
             'summaries' => $this->calculateSummary($timesheets),
+            'user_summary' => $this->calculateUserSummary($timesheets),
             'display_cost' => $this->exportConfiguration->doDisplayCostOnPdf()
         ]);
 
@@ -75,7 +76,7 @@ class PDFRenderer implements RendererInterface
 
         $response = new Response($content);
 
-        $disposition = $response->headers->makeDisposition(ResponseHeaderBag::DISPOSITION_ATTACHMENT, 'kimai-export.pdf');
+        $disposition = $response->headers->makeDisposition(ResponseHeaderBag::DISPOSITION_INLINE, 'kimai-export.pdf');
 
         $response->headers->set('Content-Type', 'application/pdf');
         $response->headers->set('Content-Disposition', $disposition);

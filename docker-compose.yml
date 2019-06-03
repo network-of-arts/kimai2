@@ -1,7 +1,7 @@
 version: '3.4'
 
 services:
-  apache:
+  kimai:
     image: hub.dev.noa-world.ch:443/apache-dev-72
     ports:
       - 9090:80

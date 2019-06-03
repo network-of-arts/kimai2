@@ -892,7 +892,14 @@
                 <source>export.date_copyright</source>
                 <target>Created %date% with %kimai%</target>
             </trans-unit>
-
+            <trans-unit id="export.user_summary_by_customer">
+                <source>export.user_summary_by_customer</source>
+                <target>Summary by user and customer</target>
+            </trans-unit>
+            <trans-unit id="export.user_summary_by_project">
+                <source>export.user_summary_by_project</source>
+                <target>Summary by user and project</target>
+            </trans-unit>
             <!--
               Month names
             -->
