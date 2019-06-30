@@ -1,5 +1,6 @@
 <html>
 <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     <style>
         body {font-family: sans-serif;
             font-size: 10pt;
@@ -28,7 +29,6 @@
             background-color: #ececec;
             text-align: center;
             border: 0.1mm solid #000000;
-            font-variant: small-caps;
         }
         .items td.totals {
             font-weight: bold;
@@ -133,11 +133,11 @@ mpdf-->
         <td>{{ 'label.duration'|trans }}</td>
     </tr>
     </thead>
-        {% set totalDuration = 0 %}
+    {% set totalDuration = 0 %}
     {% for username, summary in user_summary %}}
         <tbody>
         <tr>
-            <td style="text-align: left; font-variant: small-caps; background-color: #ececec">
+            <td style="text-align: left; background-color: #ececec">
                 <b>{{ username }}</b>
             </td>
             <td style="background-color: #ececec">&nbsp;</td>
@@ -173,7 +173,7 @@ mpdf-->
         {% for username, summary in user_summary %}}
             <tbody>
             <tr>
-                <td style="text-align: left; font-variant: small-caps; background-color: #ececec">
+                <td style="text-align: left; background-color: #ececec">
                     <b>{{ username }}</b>
                 </td>
                 <td style="background-color: #ececec">&nbsp;</td>
