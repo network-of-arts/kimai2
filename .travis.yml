@@ -20,10 +20,8 @@ matrix:
   include:
     - php: '7.2'
     - php: '7.3'
-      env: CODECOVERAGE=1
 
 before_install:
-#  - phpenv config-rm xdebug.ini
   - composer self-update
   - php -i
   - php -m
@@ -36,15 +34,8 @@ script:
   - composer validate --no-check-all --strict
   - composer kimai:codestyle
   - composer kimai:phpstan
-  - if [[ $CODECOVERAGE == 1 ]]; then vendor/bin/phpunit tests/ --coverage-clover=coverage.xml; else vendor/bin/phpunit tests/; fi;
+  - vendor/bin/phpunit tests/
   - cp tests/.env.dist.sqlite .env
   - bin/console doctrine:database:create -n
   - bin/console doctrine:migrations:migrate -n
   - bin/console doctrine:migrations:migrate first -n
-  - cp tests/.env.dist.mysql .env
-  - bin/console doctrine:database:create -n
-  - bin/console doctrine:migrations:migrate -n
-  - bin/console doctrine:migrations:migrate first -n
-
-after_success:
-  - if [[ $CODECOVERAGE == 1 ]]; then bash <(curl -s https://codecov.io/bash); fi
