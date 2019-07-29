@@ -10,9 +10,12 @@
 namespace App\Repository;
 
 use App\Repository\Query\TagQuery;
+use Doctrine\ORM\EntityRepository;
 
-class TagRepository extends AbstractRepository
+class TagRepository extends EntityRepository
 {
+    use RepositoryTrait;
+
     /**
      * Find ids of the given tagNames separated by comma
      * @param string $tagNames
@@ -75,6 +78,7 @@ class TagRepository extends AbstractRepository
             ->select('tag.id, tag.name, count(timesheets.id) as amount')
             ->leftJoin('tag.timesheets', 'timesheets')
             ->addGroupBy('tag.id')
+            ->addGroupBy('tag.name')
             ->orderBy('tag.name')
         ;
 

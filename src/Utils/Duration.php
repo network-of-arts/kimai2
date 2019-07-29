@@ -10,7 +10,7 @@
 namespace App\Utils;
 
 /**
- * A simple class to help with timesheet record durations.
+ * Convert duration strings into seconds.
  */
 class Duration
 {
@@ -24,9 +24,9 @@ class Duration
     /**
      * Transforms seconds into a duration string.
      *
-     * @param $seconds
+     * @param int $seconds
      * @param string $format
-     * @return string
+     * @return string|null
      */
     public function format($seconds, $format = self::FORMAT_NO_SECONDS)
     {
@@ -50,10 +50,12 @@ class Duration
     }
 
     /**
+     * Returns the seconds, which were given as $duration string.
+     *
      * @param string $duration
-     * @return string
+     * @return int
      */
-    public function parseDurationString($duration)
+    public function parseDurationString($duration): int
     {
         if (false !== stripos($duration, ':')) {
             return $this->parseDuration($duration, self::FORMAT_COLON);
@@ -67,42 +69,26 @@ class Duration
     }
 
     /**
+     * Returns the seconds, which were given as $mode formatted $duration string.
+     *
      * @param string $duration
      * @param string $mode
      * @return int
      * @throws \InvalidArgumentException
      */
-    public function parseDuration(string $duration, string $mode)
+    public function parseDuration(string $duration, string $mode): int
     {
         if (empty($duration)) {
             return 0;
         }
 
-        $seconds = 0;
-
         switch ($mode) {
             case self::FORMAT_COLON:
-                $parts = explode(':', $duration);
-                if (count($parts) < 2) {
-                    throw new \InvalidArgumentException('Colon format cannot parse: ' . $duration);
-                }
-                $seconds = 0;
-                if (3 == count($parts)) {
-                    $seconds += array_pop($parts);
-                }
-                $seconds += $parts[1] * 60;
-                $seconds += $parts[0] * 3600;
+                $seconds = $this->parseColonFormat($duration);
                 break;
 
             case self::FORMAT_NATURAL:
-                try {
-                    $interval = new \DateInterval('PT' . strtoupper($duration));
-                    $reference = new \DateTimeImmutable();
-                    $endTime = $reference->add($interval);
-                    $seconds = $endTime->getTimestamp() - $reference->getTimestamp();
-                } catch (\Exception $e) {
-                    throw new \InvalidArgumentException('Invalid input for natural format: ' . $duration);
-                }
+                $seconds = $this->parseNaturalFormat($duration);
                 break;
 
             case self::FORMAT_SECONDS:
@@ -110,12 +96,59 @@ class Duration
                 break;
 
             default:
-                throw new \InvalidArgumentException('Invalid duration format: ' . $mode);
+                throw new \InvalidArgumentException(sprintf('Unsupported duration format "%s"', $mode));
         }
 
         if ($seconds < 0) {
             return 0;
         }
+
+        return $seconds;
+    }
+
+    protected function parseNaturalFormat(string $duration): int
+    {
+        try {
+            $interval = new \DateInterval('PT' . strtoupper($duration));
+            $reference = new \DateTimeImmutable();
+            $endTime = $reference->add($interval);
+
+            return $endTime->getTimestamp() - $reference->getTimestamp();
+        } catch (\Exception $e) {
+            throw new \InvalidArgumentException('Invalid input for natural format: ' . $duration);
+        }
+    }
+
+    protected function parseColonFormat(string $duration): int
+    {
+        $parts = explode(':', $duration);
+        if (count($parts) < 2 || count($parts) > 3) {
+            throw new \InvalidArgumentException(
+                sprintf('Invalid colon format given in "%s"', $duration)
+            );
+        }
+
+        foreach ($parts as $part) {
+            if (strlen($part) === 0) {
+                throw new \InvalidArgumentException(
+                    sprintf('Colon format cannot parse "%s"', $duration)
+                );
+            }
+            if (((int) $part) < 0) {
+                throw new \InvalidArgumentException(
+                    sprintf('Negative input is not allowed in "%s"', $duration)
+                );
+            }
+        }
+
+        $seconds = 0;
+
+        if (3 == count($parts)) {
+            $seconds += (int) array_pop($parts);
+        }
+
+        $seconds += (int) $parts[1] * 60;
+        $seconds += (int) $parts[0] * 3600;
 
         return $seconds;
     }

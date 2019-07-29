@@ -12,7 +12,7 @@ declare(strict_types=1);
 namespace App\API;
 
 use App\Entity\Customer;
-use App\Form\CustomerEditForm;
+use App\Form\API\CustomerApiEditForm;
 use App\Repository\CustomerRepository;
 use App\Repository\Query\CustomerQuery;
 use FOS\RestBundle\Controller\Annotations as Rest;
@@ -37,16 +37,11 @@ class CustomerController extends BaseApiController
      * @var CustomerRepository
      */
     protected $repository;
-
     /**
      * @var ViewHandlerInterface
      */
     protected $viewHandler;
 
-    /**
-     * @param ViewHandlerInterface $viewHandler
-     * @param CustomerRepository $repository
-     */
     public function __construct(ViewHandlerInterface $viewHandler, CustomerRepository $repository)
     {
         $this->viewHandler = $viewHandler;
@@ -73,10 +68,6 @@ class CustomerController extends BaseApiController
     public function cgetAction(ParamFetcherInterface $paramFetcher)
     {
         $query = new CustomerQuery();
-        $query
-            ->setResultType(CustomerQuery::RESULT_TYPE_OBJECTS)
-            ->setOrderBy('name')
-        ;
 
         if (null !== ($order = $paramFetcher->get('order'))) {
             $query->setOrder($order);
@@ -90,7 +81,7 @@ class CustomerController extends BaseApiController
             $query->setVisibility($visible);
         }
 
-        $data = $this->repository->findByQuery($query);
+        $data = $this->repository->getCustomersForQuery($query);
         $view = new View($data, 200);
         $view->getContext()->setGroups(['Default', 'Collection', 'Customer']);
 
@@ -111,6 +102,7 @@ class CustomerController extends BaseApiController
      */
     public function getAction($id)
     {
+        /** @var Customer $data */
         $data = $this->repository->find($id);
 
         if (null === $data) {
@@ -155,9 +147,7 @@ class CustomerController extends BaseApiController
 
         $customer = new Customer();
 
-        $form = $this->createForm(CustomerEditForm::class, $customer, [
-            'csrf_protection' => false,
-        ]);
+        $form = $this->createForm(CustomerApiEditForm::class, $customer);
 
         $form->submit($request->request->all());
 
@@ -219,9 +209,7 @@ class CustomerController extends BaseApiController
             throw new AccessDeniedHttpException('User cannot update customer');
         }
 
-        $form = $this->createForm(CustomerEditForm::class, $customer, [
-            'csrf_protection' => false,
-        ]);
+        $form = $this->createForm(CustomerApiEditForm::class, $customer);
 
         $form->setData($customer);
         $form->submit($request->request->all(), false);

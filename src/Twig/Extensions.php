@@ -46,59 +46,6 @@ class Extensions extends AbstractExtension
     protected $moneyFormatter;
 
     /**
-     * @var string[]
-     */
-    protected static $icons = [
-        'activity' => 'fas fa-tasks',
-        'admin' => 'fas fa-wrench',
-        'calendar' => 'far fa-calendar-alt',
-        'customer' => 'fas fa-users',
-        'copy' => 'far fa-copy',
-        'create' => 'far fa-plus-square',
-        'dashboard' => 'fas fa-tachometer-alt',
-        'delete' => 'far fa-trash-alt',
-        'download' => 'fas fa-download',
-        'duration' => 'far fa-hourglass',
-        'edit' => 'far fa-edit',
-        'filter' => 'fas fa-filter',
-        'help' => 'far fa-question-circle',
-        'invoice' => 'fas fa-file-invoice',
-        'list' => 'fas fa-list',
-        'logout' => 'fas fa-sign-out-alt',
-        'manual' => 'fas fa-book',
-        'money' => 'far fa-money-bill-alt',
-        'print' => 'fas fa-print',
-        'project' => 'fas fa-project-diagram',
-        'repeat' => 'fas fa-redo-alt',
-        'start' => 'fas fa-play-circle',
-        'start-small' => 'far fa-play-circle',
-        'stop' => 'fas fa-stop',
-        'stop-small' => 'far fa-stop-circle',
-        'timesheet' => 'fas fa-clock',
-        'trash' => 'far fa-trash-alt',
-        'user' => 'fas fa-user',
-        'visibility' => 'far fa-eye',
-        'settings' => 'fas fa-cog',
-        'export' => 'fas fa-file-export',
-        'pdf' => 'fas fa-file-pdf',
-        'csv' => 'fas fa-table',
-        'ods' => 'fas fa-table',
-        'xlsx' => 'fas fa-file-excel',
-        'on' => 'fas fa-toggle-on',
-        'off' => 'fas fa-toggle-off',
-        'audit' => 'fas fa-history',
-        'home' => 'fas fa-home',
-        'shop' => 'fas fa-shopping-cart',
-        'about' => 'fas fa-info-circle',
-        'debug' => 'far fa-file-alt',
-        'profile-stats' => 'far fa-chart-bar',
-        'profile' => 'fas fa-user-edit',
-        'warning' => 'fas fa-exclamation-triangle',
-        'permissions' => 'fas fa-user-lock',
-        'back' => 'fas fa-long-arrow-alt-left',
-    ];
-
-    /**
      * @param LocaleSettings $localeSettings
      */
     public function __construct(LocaleSettings $localeSettings)
@@ -117,7 +64,6 @@ class Extensions extends AbstractExtension
             new TwigFilter('money', [$this, 'money']),
             new TwigFilter('currency', [$this, 'currency']),
             new TwigFilter('country', [$this, 'country']),
-            new TwigFilter('icon', [$this, 'icon']),
             new TwigFilter('docu_link', [$this, 'documentationLink']),
         ];
     }
@@ -134,7 +80,7 @@ class Extensions extends AbstractExtension
     }
 
     /**
-     * @param $object
+     * @param object $object
      * @return null|string
      */
     public function getClassName($object)
@@ -155,14 +101,24 @@ class Extensions extends AbstractExtension
      */
     public function duration($duration, $format = null)
     {
-        $seconds = $duration;
+        if (null === $duration) {
+            $duration = 0;
+        }
+
         if ($duration instanceof Timesheet) {
             $seconds = $duration->getDuration();
             if (null === $duration->getEnd()) {
                 $seconds = time() - $duration->getBegin()->getTimestamp();
             }
+
+            $duration = $seconds;
         }
 
+        return $this->formatDuration((int) $duration, $format);
+    }
+
+    protected function formatDuration(int $seconds, $format = null): string
+    {
         if ($seconds < 0) {
             return '?';
         }
@@ -190,16 +146,6 @@ class Extensions extends AbstractExtension
     public function country($country)
     {
         return Intl::getRegionBundle()->getCountryName($country);
-    }
-
-    /**
-     * @param string $name
-     * @param string $default
-     * @return string
-     */
-    public function icon($name, $default = '')
-    {
-        return self::$icons[$name] ?? $default;
     }
 
     /**

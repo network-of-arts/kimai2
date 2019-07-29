@@ -9,15 +9,16 @@
 
 namespace App\Tests\Entity;
 
-use App\Entity\Activity;
 use App\Entity\Customer;
 use App\Entity\Project;
-use App\Entity\Timesheet;
+use App\Entity\ProjectMeta;
+use Doctrine\Common\Collections\Collection;
+use PHPUnit\Framework\TestCase;
 
 /**
  * @covers \App\Entity\Project
  */
-class ProjectTest extends AbstractEntityTest
+class ProjectTest extends TestCase
 {
     public function testDefaultValues()
     {
@@ -28,12 +29,14 @@ class ProjectTest extends AbstractEntityTest
         $this->assertNull($sut->getOrderNumber());
         $this->assertNull($sut->getComment());
         $this->assertTrue($sut->getVisible());
-        $this->assertEquals(0.0, $sut->getBudget());
-        // activities
         $this->assertNull($sut->getFixedRate());
         $this->assertNull($sut->getHourlyRate());
-        $this->assertNull($sut->getTimesheets());
         $this->assertNull($sut->getColor());
+        $this->assertEquals(0.0, $sut->getBudget());
+        $this->assertEquals(0, $sut->getTimeBudget());
+        $this->assertInstanceOf(Collection::class, $sut->getMetaFields());
+        $this->assertEquals(0, $sut->getMetaFields()->count());
+        $this->assertNull($sut->getMetaField('foo'));
     }
 
     public function testSetterAndGetter()
@@ -59,20 +62,43 @@ class ProjectTest extends AbstractEntityTest
         $this->assertInstanceOf(Project::class, $sut->setVisible(false));
         $this->assertFalse($sut->getVisible());
 
-        $this->assertInstanceOf(Project::class, $sut->setBudget(12345.67));
-        $this->assertEquals(12345.67, $sut->getBudget());
-
-        $activities = [(new Activity())->setName('foo')];
-        $this->assertInstanceOf(Project::class, $sut->setActivities($activities));
-        $this->assertSame($activities, $sut->getActivities());
-
         $this->assertInstanceOf(Project::class, $sut->setFixedRate(13.47));
         $this->assertEquals(13.47, $sut->getFixedRate());
+
         $this->assertInstanceOf(Project::class, $sut->setHourlyRate(99));
         $this->assertEquals(99, $sut->getHourlyRate());
 
-        $timesheets = [(new Timesheet())->setDescription('foo'), (new Timesheet())->setDescription('bar')];
-        $this->assertInstanceOf(Project::class, $sut->setTimesheets($timesheets));
-        $this->assertSame($timesheets, $sut->getTimesheets());
+        $this->assertInstanceOf(Project::class, $sut->setBudget(12345.67));
+        $this->assertEquals(12345.67, $sut->getBudget());
+
+        $this->assertInstanceOf(Project::class, $sut->setTimeBudget(937321));
+        $this->assertEquals(937321, $sut->getTimeBudget());
+    }
+
+    public function testMetaFields()
+    {
+        $sut = new Project();
+        $meta = new ProjectMeta();
+        $meta->setName('foo')->setValue('bar')->setType('test');
+        $this->assertInstanceOf(Project::class, $sut->setMetaField($meta));
+        self::assertEquals(1, $sut->getMetaFields()->count());
+        $result = $sut->getMetaField('foo');
+        self::assertSame($result, $meta);
+        self::assertEquals('test', $result->getType());
+
+        $meta2 = new ProjectMeta();
+        $meta2->setName('foo')->setValue('bar')->setType('test2');
+        $this->assertInstanceOf(Project::class, $sut->setMetaField($meta2));
+        self::assertEquals(1, $sut->getMetaFields()->count());
+        self::assertCount(0, $sut->getVisibleMetaFields());
+
+        $result = $sut->getMetaField('foo');
+        self::assertSame($result, $meta);
+        self::assertEquals('test2', $result->getType());
+
+        $sut->setMetaField((new ProjectMeta())->setName('blub')->setIsVisible(true));
+        $sut->setMetaField((new ProjectMeta())->setName('blab')->setIsVisible(true));
+        self::assertEquals(3, $sut->getMetaFields()->count());
+        self::assertCount(2, $sut->getVisibleMetaFields());
     }
 }

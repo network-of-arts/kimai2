@@ -10,6 +10,7 @@
 namespace App\Command;
 
 use Symfony\Component\Console\Command\Command;
+use Symfony\Component\Console\Helper\QuestionHelper;
 use Symfony\Component\Console\Input\ArrayInput;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
@@ -102,6 +103,17 @@ EOT
             return 4;
         }
 
+        try {
+            $command = $this->getApplication()->find('doctrine:migrations:version');
+            $cmdInput = new ArrayInput(['--add' => true, '--all' => true]);
+            $cmdInput->setInteractive(false);
+            $command->run($cmdInput, $output);
+        } catch (\Exception $ex) {
+            $io->error('Failed to set migration status: ' . $ex->getMessage());
+
+            return 5;
+        }
+
         if (!$input->getOption('no-cache')) {
             $command = $this->getApplication()->find('cache:clear');
             try {
@@ -109,7 +121,7 @@ EOT
             } catch (\Exception $ex) {
                 $io->error('Failed to clear cache: ' . $ex->getMessage());
 
-                return 5;
+                return 6;
             }
         }
 
@@ -129,6 +141,7 @@ EOT
             return true;
         }
 
+        /** @var QuestionHelper $questionHelper */
         $questionHelper = $this->getHelperSet()->get('question');
         $question = new ConfirmationQuestion('<question>' . $question . '</question>', $default);
 

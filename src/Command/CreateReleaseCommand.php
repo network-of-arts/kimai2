@@ -114,7 +114,6 @@ class CreateReleaseCommand extends Command
         $commands = [
             'Clone repository' => $gitCmd . ' ' . $tmpDir,
             'Install composer dependencies' => 'cd ' . $tmpDir . ' && composer install --no-dev --optimize-autoloader',
-            'Create .env file' => 'cd ' . $tmpDir . ' && cp .env.dist .env',
             'Create database' => 'cd ' . $tmpDir . ' && bin/console doctrine:database:create -n',
             'Create tables' => 'cd ' . $tmpDir . ' && bin/console doctrine:schema:create -n',
             'Add all migrations' => 'cd ' . $tmpDir . ' && bin/console doctrine:migrations:version --add --all -n',
@@ -122,6 +121,19 @@ class CreateReleaseCommand extends Command
 
         $filesToDelete = [
             '.git*',
+            '.codecov.yml',
+            '.editorconfig',
+            '.php_cs.dist',
+            '.travis.yml',
+            '*.lock',
+            'package.json',
+            'phpstan.neon',
+            'Dockerfile',
+            'phpunit.xml.dist',
+            'webpack.config.js',
+            'assets/',
+            'bin/',
+            'tests/',
             'var/cache/*',
             'var/data/kimai_test.sqlite',
             'var/log/*.log',

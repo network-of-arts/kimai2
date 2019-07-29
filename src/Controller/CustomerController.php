@@ -11,15 +11,20 @@ namespace App\Controller;
 
 use App\Configuration\FormConfiguration;
 use App\Entity\Customer;
+use App\Event\CustomerMetaDefinitionEvent;
 use App\Form\CustomerEditForm;
 use App\Form\Toolbar\CustomerToolbarForm;
 use App\Form\Type\CustomerType;
 use App\Repository\CustomerRepository;
+use App\Repository\Query\CustomerFormTypeQuery;
 use App\Repository\Query\CustomerQuery;
 use Doctrine\ORM\ORMException;
-use Pagerfanta\Pagerfanta;
 use Sensio\Bundle\FrameworkExtraBundle\Configuration\Security;
+use Symfony\Component\EventDispatcher\EventDispatcherInterface;
+use Symfony\Component\Form\FormInterface;
+use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Annotation\Route;
 
 /**
@@ -38,15 +43,20 @@ class CustomerController extends AbstractController
      * @var FormConfiguration
      */
     private $configuration;
+    /**
+     * @var EventDispatcherInterface
+     */
+    protected $dispatcher;
 
     /**
      * @param CustomerRepository $repository
      * @param FormConfiguration $configuration
      */
-    public function __construct(CustomerRepository $repository, FormConfiguration $configuration)
+    public function __construct(CustomerRepository $repository, FormConfiguration $configuration, EventDispatcherInterface $dispatcher)
     {
         $this->repository = $repository;
         $this->configuration = $configuration;
+        $this->dispatcher = $dispatcher;
     }
 
     /**
@@ -64,30 +74,23 @@ class CustomerController extends AbstractController
      *
      * @param int $page
      * @param Request $request
-     * @return \Symfony\Component\HttpFoundation\Response
+     * @return Response
      */
     public function indexAction($page, Request $request)
     {
         $query = new CustomerQuery();
-        $query
-            ->setOrderBy('name')
-            ->setPage($page)
-        ;
+        $query->setPage($page);
 
         $form = $this->getToolbarForm($query);
-        $form->handleRequest($request);
-        if ($form->isSubmitted() && $form->isValid()) {
-            /** @var CustomerQuery $query */
-            $query = $form->getData();
-        }
+        $form->setData($query);
+        $form->submit($request->query->all(), false);
 
-        /* @var $entries Pagerfanta */
-        $entries = $this->getRepository()->findByQuery($query);
+        $entries = $this->getRepository()->getPagerfantaForQuery($query);
 
         return $this->render('customer/index.html.twig', [
             'entries' => $entries,
             'query' => $query,
-            'showFilter' => $form->isSubmitted(),
+            'showFilter' => $query->isDirty(),
             'toolbarForm' => $form->createView(),
         ]);
     }
@@ -97,16 +100,36 @@ class CustomerController extends AbstractController
      * @Security("is_granted('create_customer')")
      *
      * @param Request $request
-     * @return \Symfony\Component\HttpFoundation\RedirectResponse|\Symfony\Component\HttpFoundation\Response
+     * @return RedirectResponse|Response
      */
     public function createAction(Request $request)
     {
+        $timezone = date_default_timezone_get();
+        if (null !== $this->configuration->getCustomerDefaultTimezone()) {
+            $timezone = $this->configuration->getCustomerDefaultTimezone();
+        }
+
         $customer = new Customer();
         $customer->setCountry($this->configuration->getCustomerDefaultCountry());
         $customer->setCurrency($this->configuration->getCustomerDefaultCurrency());
-        $customer->setTimezone($this->configuration->getCustomerDefaultTimezone());
+        $customer->setTimezone($timezone);
 
         return $this->renderCustomerForm($customer, $request);
+    }
+
+    /**
+     * @Route(path="/{id}/budget", name="admin_customer_budget", methods={"GET"})
+     * @Security("is_granted('budget', customer)")
+     *
+     * @param Customer $customer
+     * @return Response
+     */
+    public function budgetAction(Customer $customer)
+    {
+        return $this->render('customer/budget.html.twig', [
+            'customer' => $customer,
+            'stats' => $this->getRepository()->getCustomerStatistics($customer)
+        ]);
     }
 
     /**
@@ -115,7 +138,7 @@ class CustomerController extends AbstractController
      *
      * @param Customer $customer
      * @param Request $request
-     * @return \Symfony\Component\HttpFoundation\RedirectResponse|\Symfony\Component\HttpFoundation\Response
+     * @return RedirectResponse|Response
      */
     public function editAction(Customer $customer, Request $request)
     {
@@ -128,7 +151,7 @@ class CustomerController extends AbstractController
      *
      * @param Customer $customer
      * @param Request $request
-     * @return \Symfony\Component\HttpFoundation\RedirectResponse|\Symfony\Component\HttpFoundation\Response
+     * @return RedirectResponse|Response
      */
     public function deleteAction(Customer $customer, Request $request)
     {
@@ -144,12 +167,10 @@ class CustomerController extends AbstractController
             ->add('customer', CustomerType::class, [
                 'label' => 'label.customer',
                 'query_builder' => function (CustomerRepository $repo) use ($customer) {
-                    $query = new CustomerQuery();
-                    $query
-                        ->setResultType(CustomerQuery::RESULT_TYPE_QUERYBUILDER)
-                        ->addIgnoredEntity($customer);
+                    $query = new CustomerFormTypeQuery();
+                    $query->setCustomerToIgnore($customer);
 
-                    return $repo->findByQuery($query);
+                    return $repo->getQueryBuilderForFormType($query);
                 },
                 'required' => false,
             ])
@@ -180,22 +201,26 @@ class CustomerController extends AbstractController
     /**
      * @param Customer $customer
      * @param Request $request
-     * @return \Symfony\Component\HttpFoundation\RedirectResponse|\Symfony\Component\HttpFoundation\Response
+     * @return RedirectResponse|Response
      */
     protected function renderCustomerForm(Customer $customer, Request $request)
     {
+        $event = new CustomerMetaDefinitionEvent($customer);
+        $this->dispatcher->dispatch(CustomerMetaDefinitionEvent::class, $event);
+
         $editForm = $this->createEditForm($customer);
 
         $editForm->handleRequest($request);
 
         if ($editForm->isSubmitted() && $editForm->isValid()) {
-            $entityManager = $this->getDoctrine()->getManager();
-            $entityManager->persist($customer);
-            $entityManager->flush();
+            try {
+                $this->getRepository()->saveCustomer($customer);
+                $this->flashSuccess('action.update.success');
 
-            $this->flashSuccess('action.update.success');
-
-            return $this->redirectToRoute('admin_customer');
+                return $this->redirectToRoute('admin_customer');
+            } catch (ORMException $ex) {
+                $this->flashError('action.update.error', ['%reason%' => $ex->getMessage()]);
+            }
         }
 
         return $this->render('customer/edit.html.twig', [
@@ -206,7 +231,7 @@ class CustomerController extends AbstractController
 
     /**
      * @param CustomerQuery $query
-     * @return \Symfony\Component\Form\FormInterface
+     * @return FormInterface
      */
     protected function getToolbarForm(CustomerQuery $query)
     {
@@ -220,7 +245,7 @@ class CustomerController extends AbstractController
 
     /**
      * @param Customer $customer
-     * @return \Symfony\Component\Form\FormInterface
+     * @return FormInterface
      */
     private function createEditForm(Customer $customer)
     {
@@ -232,7 +257,8 @@ class CustomerController extends AbstractController
 
         return $this->createForm(CustomerEditForm::class, $customer, [
             'action' => $url,
-            'method' => 'POST'
+            'method' => 'POST',
+            'include_budget' => $this->isGranted('budget', $customer)
         ]);
     }
 }

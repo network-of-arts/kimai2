@@ -19,6 +19,7 @@ use App\Form\Type\DateTimePickerType;
 use App\Form\Type\DurationType;
 use App\Form\Type\FixedRateType;
 use App\Form\Type\HourlyRateType;
+use App\Form\Type\MetaFieldsCollectionType;
 use App\Form\Type\ProjectType;
 use App\Form\Type\TagsInputType;
 use App\Form\Type\UserType;
@@ -26,6 +27,9 @@ use App\Form\Type\YesNoType;
 use App\Repository\ActivityRepository;
 use App\Repository\CustomerRepository;
 use App\Repository\ProjectRepository;
+use App\Repository\Query\ActivityFormTypeQuery;
+use App\Repository\Query\CustomerFormTypeQuery;
+use App\Repository\Query\ProjectFormTypeQuery;
 use App\Timesheet\UserDateTimeFactory;
 use Symfony\Component\Form\AbstractType;
 use Symfony\Component\Form\Extension\Core\Type\TextareaType;
@@ -75,7 +79,6 @@ class TimesheetEditForm extends AbstractType
         $currency = false;
         $begin = null;
         $customerCount = $this->customers->countCustomer(true);
-        $projectCount = $this->projects->countProject(true);
         $timezone = $this->dateTime->getTimezone()->getName();
         $isNew = true;
 
@@ -114,26 +117,28 @@ class TimesheetEditForm extends AbstractType
             $dateTimeOptions['format'] = $options['date_format'];
         }
 
-        if ($this->showTimeFields($options)) {
+        if ($options['allow_begin_datetime']) {
             $this->addBegin($builder, $dateTimeOptions);
+        }
 
-            if ($options['use_duration']) {
-                $this->addDuration($builder);
-            } else {
-                $this->addEnd($builder, $dateTimeOptions);
-            }
+        if ($options['allow_duration']) {
+            $this->addDuration($builder);
+        } elseif ($options['allow_end_datetime']) {
+            $this->addEnd($builder, $dateTimeOptions);
         }
 
         if ($this->showCustomer($options, $isNew, $customerCount)) {
             $this->addCustomer($builder, $customer);
         }
 
-        $this->addProject($builder, $customerCount, $projectCount, $project, $customer);
+        $this->addProject($builder, $customerCount, $isNew, $project, $customer);
         $this->addActivity($builder, $activity, $project);
         $this->addDescription($builder);
         $this->addTags($builder);
         $this->addRates($builder, $currency, $options);
         $this->addUser($builder, $options);
+        $builder->add('metaFields', MetaFieldsCollectionType::class);
+
         $this->addExported($builder, $options);
     }
 
@@ -154,35 +159,26 @@ class TimesheetEditForm extends AbstractType
         return true;
     }
 
-    protected function showTimeFields(array $options): bool
-    {
-        return $options['include_datetime'];
-    }
-
     protected function addCustomer(FormBuilderInterface $builder, ?Customer $customer = null)
     {
         $builder
             ->add('customer', CustomerType::class, [
                 'query_builder' => function (CustomerRepository $repo) use ($customer) {
-                    return $repo->builderForEntityType($customer);
+                    return $repo->getQueryBuilderForFormType(new CustomerFormTypeQuery($customer));
                 },
                 'data' => $customer ? $customer : '',
                 'required' => false,
-                'placeholder' => null === $customer ? '' : null,
+                'placeholder' => '',
                 'mapped' => false,
                 'project_enabled' => true,
             ]);
     }
 
-    protected function addProject(FormBuilderInterface $builder, int $customerCount, int $projectCount, ?Project $project = null, ?Customer $customer = null)
+    protected function addProject(FormBuilderInterface $builder, int $customerCount, bool $isNew, ?Project $project = null, ?Customer $customer = null)
     {
         $projectOptions = [];
 
         if ($customerCount < 2) {
-            $projectOptions['group_by'] = null;
-        }
-
-        if ($projectCount < 2) {
             $projectOptions['group_by'] = null;
         }
 
@@ -194,7 +190,7 @@ class TimesheetEditForm extends AbstractType
                     'placeholder' => '',
                     'activity_enabled' => true,
                     'query_builder' => function (ProjectRepository $repo) use ($project, $customer) {
-                        return $repo->builderForEntityType($project, $customer);
+                        return $repo->getQueryBuilderForFormType(new ProjectFormTypeQuery($project, $customer));
                     },
                 ])
             );
@@ -202,18 +198,31 @@ class TimesheetEditForm extends AbstractType
         // replaces the project select after submission, to make sure only projects for the selected customer are displayed
         $builder->addEventListener(
             FormEvents::PRE_SUBMIT,
-            function (FormEvent $event) use ($project) {
+            function (FormEvent $event) use ($project, $customer, $isNew) {
                 $data = $event->getData();
-                if (!isset($data['customer']) || empty($data['customer'])) {
-                    return;
-                }
+                $customer = isset($data['customer']) && !empty($data['customer']) ? $data['customer'] : null;
+                $project = isset($data['project']) && !empty($data['project']) ? $data['project'] : $project;
 
                 $event->getForm()->add('project', ProjectType::class, [
                     'placeholder' => '',
                     'activity_enabled' => true,
                     'group_by' => null,
-                    'query_builder' => function (ProjectRepository $repo) use ($data, $project) {
-                        return $repo->builderForEntityType($project, $data['customer']);
+                    'query_builder' => function (ProjectRepository $repo) use ($project, $customer, $isNew) {
+                        // is there a better wa to prevent starting a record with a hidden project ?
+                        if ($isNew && !is_object($project)) {
+                            /** @var Project $project */
+                            $project = $repo->find($project);
+                            if (null !== $project) {
+                                if (!$project->getCustomer()->getVisible()) {
+                                    $customer = null;
+                                    $project = null;
+                                } elseif (!$project->getVisible()) {
+                                    $project = null;
+                                }
+                            }
+                        }
+
+                        return $repo->getQueryBuilderForFormType(new ProjectFormTypeQuery($project, $customer));
                     },
                 ]);
             }
@@ -226,7 +235,7 @@ class TimesheetEditForm extends AbstractType
             ->add('activity', ActivityType::class, [
                 'placeholder' => '',
                 'query_builder' => function (ActivityRepository $repo) use ($activity, $project) {
-                    return $repo->builderForEntityType($activity, $project);
+                    return $repo->getQueryBuilderForFormType(new ActivityFormTypeQuery($activity, $project));
                 },
             ])
         ;
@@ -243,7 +252,7 @@ class TimesheetEditForm extends AbstractType
                 $event->getForm()->add('activity', ActivityType::class, [
                     'placeholder' => '',
                     'query_builder' => function (ActivityRepository $repo) use ($data, $activity) {
-                        return $repo->builderForEntityType($activity, $data['project']);
+                        return $repo->getQueryBuilderForFormType(new ActivityFormTypeQuery($activity, $data['project']));
                     },
                 ]);
             }
@@ -377,8 +386,9 @@ class TimesheetEditForm extends AbstractType
             'method' => 'POST',
             'date_format' => null,
             'customer' => false, // for API usage
-            'use_duration' => false, // duration instead of end (for duration_only mode)
-            'include_datetime' => true,
+            'allow_begin_datetime' => true,
+            'allow_end_datetime' => true,
+            'allow_duration' => false,
             'attr' => [
                 'data-form-event' => 'kimai.timesheetUpdate',
                 'data-msg-success' => 'action.update.success',

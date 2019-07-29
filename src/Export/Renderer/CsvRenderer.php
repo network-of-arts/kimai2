@@ -13,7 +13,7 @@ use App\Export\RendererInterface;
 use PhpOffice\PhpSpreadsheet\IOFactory;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 
-class CsvRenderer extends AbstractSpreadsheetRenderer implements RendererInterface
+final class CsvRenderer extends AbstractSpreadsheetRenderer implements RendererInterface
 {
     /**
      * @return string
@@ -33,12 +33,16 @@ class CsvRenderer extends AbstractSpreadsheetRenderer implements RendererInterfa
 
     /**
      * @param Spreadsheet $spreadsheet
-     * @return bool|string
-     * @throws \PhpOffice\PhpSpreadsheet\Writer\Exception
+     * @return string
+     * @throws \Exception
      */
     protected function saveSpreadsheet(Spreadsheet $spreadsheet): string
     {
         $filename = tempnam(sys_get_temp_dir(), 'kimai-export-csv');
+        if (false === $filename) {
+            throw new \Exception('Could not open temporary file');
+        }
+
         $writer = IOFactory::createWriter($spreadsheet, 'Csv');
         $writer->save($filename);
 

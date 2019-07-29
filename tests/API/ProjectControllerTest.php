@@ -100,9 +100,11 @@ class ProjectControllerTest extends APIControllerBaseTest
         yield ['/api/projects', ['customer' => '1', 'visible' => VisibilityQuery::SHOW_VISIBLE], [[true, 1], [false, 1]]];
         yield ['/api/projects', ['customer' => '1', 'visible' => VisibilityQuery::SHOW_BOTH], [[true, 1], [false, 1], [false, 1]]];
         yield ['/api/projects', ['customer' => '1', 'visible' => VisibilityQuery::SHOW_HIDDEN], [[false, 1]]];
+        // customer is invisible, so nothing should be returned
         yield ['/api/projects', ['customer' => '2', 'visible' => VisibilityQuery::SHOW_VISIBLE], []];
         yield ['/api/projects', ['customer' => '2', 'visible' => VisibilityQuery::SHOW_BOTH], [[false, 2], [false, 2]]];
-        yield ['/api/projects', ['customer' => '2', 'visible' => VisibilityQuery::SHOW_HIDDEN], [[false, 2]]];
+        // customer is invisible, so nothing should be returned
+        yield ['/api/projects', ['customer' => '2', 'visible' => VisibilityQuery::SHOW_HIDDEN], []];
     }
 
     public function testGetEntity()
@@ -127,7 +129,6 @@ class ProjectControllerTest extends APIControllerBaseTest
             'name' => 'foo',
             'customer' => 1,
             'visible' => true,
-            'budget' => 0,
         ];
         $this->request($client, '/api/projects', 'POST', [], json_encode($data));
         $this->assertTrue($client->getResponse()->isSuccessful());
@@ -213,14 +214,13 @@ class ProjectControllerTest extends APIControllerBaseTest
     protected function assertStructure(array $result, $full = true)
     {
         $expectedKeys = [
-            'id', 'name', 'visible', 'customer', 'hourlyRate', 'fixedRate', 'color'
+            'id', 'name', 'visible', 'customer', 'hourlyRate', 'fixedRate', 'color', 'metaFields', 'parentTitle'
         ];
 
         if ($full) {
-            $expectedKeys = array_merge(
-                $expectedKeys,
-                ['comment', 'budget', 'orderNumber']
-            );
+            $expectedKeys = array_merge($expectedKeys, [
+                'comment', 'budget', 'timeBudget', 'orderNumber'
+            ]);
         }
 
         $actual = array_keys($result);

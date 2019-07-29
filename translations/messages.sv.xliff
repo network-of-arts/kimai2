@@ -21,10 +21,6 @@
                 <source>both</source>
                 <target state="translated">båda</target>
             </trans-unit>
-            <trans-unit id="subtitle.amount">
-                <source>subtitle.amount</source>
-                <target state="translated">(totalt %count%)</target>
-            </trans-unit>            
             <trans-unit id="This is a mandatory field">
                 <source>This is a mandatory field</source>
                 <target state="translated">Detta är ett obligatoriskt fält</target>
@@ -37,9 +33,12 @@
                 <source>confirm.delete</source>
                 <target state="translated">Vill du verkligen ta bort detta?</target>
             </trans-unit>
-            <trans-unit id="confirm.delete_message">
-                <source>confirm.delete_message</source>
-                <target state="translated">Du måste bekräfta borttagningen, eftersom det finns länkade objekt som också kommer att raderas.</target>
+            <trans-unit id="admin_entity.delete_confirm">
+                <source>admin_entity.delete_confirm</source>
+                <target state="translated">
+                    Denna data kommer också att raderas!
+                    Alternativt kan du välja en post som alla data ska överföras till:
+                </target>
             </trans-unit>
             <trans-unit id="delete.not_in_use">
                 <source>delete.not_in_use</source>
@@ -201,6 +200,10 @@
                 <source>label.budget</source>
                 <target>Budget</target>
             </trans-unit>
+            <trans-unit id="label.timeBudget">
+                <source>label.timeBudget</source>
+                <target>Time budget</target>
+            </trans-unit>
             <trans-unit id="label.activity">
                 <source>label.activity</source>
                 <target state="translated">Aktivitet</target>
@@ -209,9 +212,21 @@
                 <source>label.project</source>
                 <target state="translated">Projekt</target>
             </trans-unit>
+            <trans-unit id="label.tag">
+                <source>label.tag</source>
+                <target state="translated">Taggar</target>
+            </trans-unit>
+            <trans-unit id="label.tags">
+                <source>label.tags</source>
+                <target state="translated">Taggar</target>
+            </trans-unit>
             <trans-unit id="label.hourlyRate">
                 <source>label.hourlyRate</source>
                 <target state="translated">Timpris</target>
+            </trans-unit>
+            <trans-unit id="label.hourly_rate">
+                <source>label.hourly_rate</source>
+                <target>Hourly rate</target>
             </trans-unit>
             <trans-unit id="label.skin">
                 <source>label.skin</source>
@@ -236,8 +251,7 @@
             <trans-unit id="label.customer_number">
                 <source>label.customer_number</source>
                 <target state="translated">Konto</target>
-            </trans-unit>
-            
+            </trans-unit>            
             <trans-unit id="label.email">
                 <source>label.email</source>
                 <target state="translated">E-post</target>
@@ -293,10 +307,6 @@
             <trans-unit id="dashboard.all">
                 <source>dashboard.all</source>
                 <target state="translated">Alla användare</target>
-            </trans-unit>
-            <trans-unit id="dashboard.admin">
-                <source>dashboard.admin</source>
-                <target state="translated">Administratör</target>
             </trans-unit>
 
             <!--
@@ -463,12 +473,11 @@
                 <source>admin_project.subtitle</source>
                 <target state="translated">Ett projekt kombinerar aktiviteter för en kund i en grupp</target>
             </trans-unit>
-            <trans-unit id="admin_project.delete_confirm">
-                <source>admin_project.delete_confirm</source>
+            <trans-unit id="admin_project.short_stats">
+                <source>admin_project.short_stats</source>
                 <target state="translated">Projektet %project% för kunden %customer% har %activities% för närvarande %activities% 
                      aktiviteter och %records% time-records, som räknas upp till totalt %duration%.
-                     Dessa aktiviteter och tidsposter kommer också att raderas!
-                     Alternativt kan du välja ett projekt till vilket alla befintliga aktiviteter och poster överförs:</target>
+                </target>
             </trans-unit>
 
             <!--
@@ -482,13 +491,12 @@
                 <source>admin_activity.subtitle</source>
                 <target state="translated">Uppgifter som kan väljas för tidsposter</target>
             </trans-unit>
-            <trans-unit id="admin_activity.delete_confirm">
-                <source>admin_activity.delete_confirm</source>
+            <trans-unit id="admin_activity.short_stats">
+                <source>admin_activity.short_stats</source>
                 <target state="translated">
                      För närvarande aktiviteten %activity% i projektet %project% för kunden %customer%
                      har %records% tidsrekord, vilket räknas upp till totalt %duration%.
-                     Dessa tidsposter kommer också att raderas!
-                     Alternativt kan du välja en aktivitet som alla befintliga poster överförs:</target>
+                     </target>
             </trans-unit>
 
             <!--
@@ -550,13 +558,12 @@
                 <source>label.currency</source>
                 <target state="translated">Valuta</target>
             </trans-unit>
-            <trans-unit id="admin_customer.delete_confirm">
-                <source>admin_customer.delete_confirm</source>
+            <trans-unit id="admin_customer.short_stats">
+                <source>admin_customer.short_stats</source>
                 <target state="translated">
 För närvarande kunden %customer% har %project% projekt med% aktivitet% aktiviteter, som räknas upp
                      i %activity% tidposter till totalt %duration%.
-                     Dessa projekt, aktiviteter och tidsposter kommer också att raderas!
-                     Alternativt kan du välja en kund till vilken alla data överförs:</target>
+                </target>
             </trans-unit>
 
             <!--
@@ -590,11 +597,11 @@ För närvarande kunden %customer% har %project% projekt med% aktivitet% aktivit
                 <source>label.roles</source>
                 <target state="translated">Roll</target>
             </trans-unit>
-            <trans-unit id="admin_user.delete_confirm">
-                <source>admin_user.delete_confirm</source>
+            <trans-unit id="admin_user.short_stats">
+                <source>admin_user.short_stats</source>
                 <target state="translated">
 För närvarande har %user% användare %records% tidsrekord som räknas upp till totalt %duration%.
-                     Dessa tidsposter kommer också att raderas!</target>
+                     </target>
             </trans-unit>
 
             <!--
@@ -943,9 +950,17 @@ För närvarande har %user% användare %records% tidsrekord som räknas upp till
             <!--
              Navbar - recent entries and activities
             -->
+            <trans-unit id="active.entries">
+                <source>active.entries</source>
+                <target state="translated">Dina aktiva tidsmätningar</target>
+            </trans-unit>
             <trans-unit id="timesheet.all">
                 <source>timesheet.all</source>
                 <target state="translated">Visa alla Poster</target>
+            </trans-unit>
+            <trans-unit id="recent.activities">
+                <source>recent.activities</source>
+                <target state="translated">Starta om en av dina senaste aktiviteter</target>
             </trans-unit>
             <trans-unit id="recent.activities.format">
                 <source>recent.activities.format</source>
@@ -1003,17 +1018,6 @@ För närvarande har %user% användare %records% tidsrekord som räknas upp till
                 <source>label.globalsOnly</source>
                 <target state="translated">Endast globalt</target>
             </trans-unit>
-            <!--
-              HELP
-            --> 
-            <trans-unit id="help.title">
-                <source>help.title</source>
-                <target>Hjälp</target>
-            </trans-unit>
-               <trans-unit id="help.subtitle">
-                <source>help.subtitle</source>
-                <target>Foo</target>
-            </trans-unit>         
         </body>
     </file>
 </xliff>

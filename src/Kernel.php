@@ -13,13 +13,18 @@ use App\DependencyInjection\AppExtension;
 use App\DependencyInjection\Compiler\DoctrineCompilerPass;
 use App\DependencyInjection\Compiler\InvoiceServiceCompilerPass;
 use App\DependencyInjection\Compiler\TwigContextCompilerPass;
+use App\DependencyInjection\Compiler\WidgetCompilerPass;
 use App\Export\RendererInterface as ExportRendererInterface;
 use App\Invoice\CalculatorInterface as InvoiceCalculator;
 use App\Invoice\NumberGeneratorInterface;
 use App\Invoice\RendererInterface as InvoiceRendererInterface;
+use App\Ldap\FormLoginLdapFactory;
 use App\Plugin\PluginInterface;
 use App\Timesheet\CalculatorInterface as TimesheetCalculator;
+use App\Widget\WidgetInterface;
+use App\Widget\WidgetRendererInterface;
 use Symfony\Bundle\FrameworkBundle\Kernel\MicroKernelTrait;
+use Symfony\Bundle\SecurityBundle\DependencyInjection\SecurityExtension;
 use Symfony\Component\Config\Loader\LoaderInterface;
 use Symfony\Component\DependencyInjection\Compiler\PassConfig;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
@@ -35,10 +40,13 @@ class Kernel extends BaseKernel
     public const CONFIG_EXTS = '.{php,xml,yaml,yml}';
 
     public const TAG_PLUGIN = 'kimai.plugin';
+    public const TAG_WIDGET = 'widget';
+    public const TAG_WIDGET_RENDERER = 'widget.renderer';
     public const TAG_EXPORT_RENDERER = 'export.renderer';
     public const TAG_INVOICE_RENDERER = 'invoice.renderer';
     public const TAG_INVOICE_NUMBER_GENERATOR = 'invoice.number_generator';
     public const TAG_INVOICE_CALCULATOR = 'invoice.calculator';
+    public const TAG_TIMESHEET_CALCULATOR = 'timesheet.calculator';
 
     public function getCacheDir()
     {
@@ -52,12 +60,18 @@ class Kernel extends BaseKernel
 
     protected function build(ContainerBuilder $container)
     {
-        $container->registerForAutoconfiguration(TimesheetCalculator::class)->addTag('timesheet.calculator');
+        $container->registerForAutoconfiguration(TimesheetCalculator::class)->addTag(self::TAG_TIMESHEET_CALCULATOR);
         $container->registerForAutoconfiguration(ExportRendererInterface::class)->addTag(self::TAG_EXPORT_RENDERER);
         $container->registerForAutoconfiguration(InvoiceRendererInterface::class)->addTag(self::TAG_INVOICE_RENDERER);
         $container->registerForAutoconfiguration(NumberGeneratorInterface::class)->addTag(self::TAG_INVOICE_NUMBER_GENERATOR);
         $container->registerForAutoconfiguration(InvoiceCalculator::class)->addTag(self::TAG_INVOICE_CALCULATOR);
         $container->registerForAutoconfiguration(PluginInterface::class)->addTag(self::TAG_PLUGIN);
+        $container->registerForAutoconfiguration(WidgetRendererInterface::class)->addTag(self::TAG_WIDGET_RENDERER);
+        $container->registerForAutoconfiguration(WidgetInterface::class)->addTag(self::TAG_WIDGET);
+
+        /** @var SecurityExtension $extension */
+        $extension = $container->getExtension('security');
+        $extension->addSecurityListenerFactory(new FormLoginLdapFactory());
     }
 
     public function registerBundles()
@@ -67,12 +81,6 @@ class Kernel extends BaseKernel
             if (isset($envs['all']) || isset($envs[$this->environment])) {
                 yield new $class();
             }
-        }
-
-        // do not load Kimai plugin in test environment, they may alter the default behaviour and create
-        // false-negatives in integration/system tests
-        if ('test' === $this->environment) {
-            return;
         }
 
         $pluginsDir = $this->getProjectDir() . '/var/plugins';
@@ -107,7 +115,27 @@ class Kernel extends BaseKernel
         $container->setParameter('container.autowiring.strict_mode', true);
         $container->setParameter('container.dumper.inline_class_loader', true);
         $confDir = $this->getProjectDir() . '/config';
-        $loader->load($confDir . '/packages/*' . self::CONFIG_EXTS, 'glob');
+
+        // if you want to prepend any config, you can do it here
+        $loader->load($confDir . '/packages/local_before' . self::CONFIG_EXTS, 'glob');
+
+        // using this one instead of $loader->load($confDir . '/packages/*' . self::CONFIG_EXTS, 'glob');
+        // to get rid of the local.yaml from the list, we load it afterwards explicit
+        $finder = (new Finder())
+            ->files()
+            ->in([$confDir . '/packages/'])
+            ->name('*' . self::CONFIG_EXTS)
+            ->notName('local*' . self::CONFIG_EXTS)
+            ->depth('== 0')
+            ->sortByName()
+            ->followLinks()
+        ;
+
+        /** @var SplFileInfo $file */
+        foreach ($finder as $file) {
+            $loader->load($file->getPathname());
+        }
+
         if (is_dir($confDir . '/packages/' . $this->environment)) {
             $loader->load($confDir . '/packages/' . $this->environment . '/**/*' . self::CONFIG_EXTS, 'glob');
         }
@@ -118,6 +146,7 @@ class Kernel extends BaseKernel
         $container->addCompilerPass(new DoctrineCompilerPass(), PassConfig::TYPE_BEFORE_OPTIMIZATION, -1000);
         $container->addCompilerPass(new TwigContextCompilerPass(), PassConfig::TYPE_BEFORE_OPTIMIZATION, -1000);
         $container->addCompilerPass(new InvoiceServiceCompilerPass(), PassConfig::TYPE_BEFORE_OPTIMIZATION, -1000);
+        $container->addCompilerPass(new WidgetCompilerPass(), PassConfig::TYPE_BEFORE_OPTIMIZATION, -1000);
     }
 
     protected function configureRoutes(RouteCollectionBuilder $routes)

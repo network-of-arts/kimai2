@@ -16,6 +16,7 @@ use Symfony\Component\HttpFoundation\BinaryFileResponse;
  * @covers \App\Export\Renderer\CsvRenderer
  * @covers \App\Export\Renderer\AbstractSpreadsheetRenderer
  * @covers \App\Export\Renderer\RendererTrait
+ * @group integration
  */
 class CsvRendererTest extends AbstractRendererTest
 {
@@ -67,5 +68,35 @@ class CsvRendererTest extends AbstractRendererTest
 
         $this->assertEquals($content, $content2);
         $this->assertFalse(file_exists($file->getRealPath()));
+
+        $all = [];
+        $rows = str_getcsv($content2, PHP_EOL);
+        foreach ($rows as $row) {
+            $all[] = str_getcsv($row);
+        }
+
+        $expected = [
+            0 => '2019.06.16 12:00',
+            1 => '2019.06.16 12:06',
+            2 => 'kevin',
+            3 => 'Customer Name',
+            4 => 'project name',
+            5 => 'activity description',
+            6 => '',
+            7 => '',
+            8 => 'foo,bar',
+            9 => 'meta-bar',
+            10 => 'meta-bar2',
+            11 => '€0.00',
+            12 => '€84.00',
+            13 => '00:06 h',
+            14 => '€0.00',
+        ];
+
+        self::assertEquals(7, count($all));
+        self::assertEquals(count($expected), count($all[0]));
+        self::assertEquals('foo', $all[4][8]);
+
+        self::assertEquals($expected, $all[5]);
     }
 }

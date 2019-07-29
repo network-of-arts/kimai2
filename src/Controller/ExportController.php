@@ -16,7 +16,9 @@ use App\Repository\Query\ExportQuery;
 use App\Repository\TimesheetRepository;
 use App\Timesheet\UserDateTimeFactory;
 use Sensio\Bundle\FrameworkExtraBundle\Configuration\Security;
+use Symfony\Component\Form\FormInterface;
 use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Annotation\Route;
 
 /**
@@ -72,23 +74,20 @@ class ExportController extends AbstractController
     }
 
     /**
-     * @Route(path="/", name="export", methods={"GET", "POST"})
+     * @Route(path="/", name="export", methods={"GET"})
      * @Security("is_granted('view_export')")
      *
      * @param Request $request
-     * @return \Symfony\Component\HttpFoundation\Response
+     * @return Response
      * @throws \Exception
      */
     public function indexAction(Request $request)
     {
         $query = $this->getDefaultQuery();
-        $form = $this->getToolbarForm($query);
-        $form->handleRequest($request);
 
-        if ($form->isSubmitted() && $form->isValid()) {
-            /** @var ExportQuery $query */
-            $query = $form->getData();
-        }
+        $form = $this->getToolbarForm($query, 'GET');
+        $form->setData($query);
+        $form->submit($request->query->all(), false);
 
         $entries = $this->getEntries($query);
 
@@ -101,23 +100,19 @@ class ExportController extends AbstractController
     }
 
     /**
-     * @Route(path="/data", name="export_data", methods={"GET", "POST"})
+     * @Route(path="/data", name="export_data", methods={"POST"})
      * @Security("is_granted('create_export')")
      *
      * @param Request $request
-     * @return \Symfony\Component\HttpFoundation\Response
+     * @return Response
      * @throws \Exception
      */
     public function export(Request $request)
     {
         $query = $this->getDefaultQuery();
-        $form = $this->getToolbarForm($query);
-        $form->handleRequest($request);
 
-        if ($form->isSubmitted() && $form->isValid()) {
-            /** @var ExportQuery $query */
-            $query = $form->getData();
-        }
+        $form = $this->getToolbarForm($query, 'POST');
+        $form->handleRequest($request);
 
         $type = $query->getType();
         if (null === $type) {
@@ -126,8 +121,6 @@ class ExportController extends AbstractController
 
         $renderer = $this->export->getRendererById($type);
 
-        // this code should not be reached, as the query already filters invalid values
-        // when trying to call setType() with an unknown value
         if (null === $renderer) {
             throw $this->createNotFoundException('Unknown export renderer');
         }
@@ -141,26 +134,19 @@ class ExportController extends AbstractController
      * @param ExportQuery $query
      * @return Timesheet[]
      */
-    protected function getEntries(ExportQuery $query)
+    protected function getEntries(ExportQuery $query): array
     {
-        $query->setResultType(ExportQuery::RESULT_TYPE_QUERYBUILDER);
         $query->getBegin()->setTime(0, 0, 0);
         $query->getEnd()->setTime(23, 59, 59);
 
-        $queryBuilder = $this->timesheetRepository->findByQuery($query);
-
-        return $queryBuilder->getQuery()->getResult();
+        return $this->timesheetRepository->getTimesheetsForQuery($query);
     }
 
-    /**
-     * @param ExportQuery $query
-     * @return \Symfony\Component\Form\FormInterface
-     */
-    protected function getToolbarForm(ExportQuery $query)
+    protected function getToolbarForm(ExportQuery $query, string $method): FormInterface
     {
         return $this->createForm(ExportToolbarForm::class, $query, [
             'action' => $this->generateUrl('export', []),
-            'method' => 'POST',
+            'method' => $method,
             'attr' => [
                 'id' => 'export-form'
             ]

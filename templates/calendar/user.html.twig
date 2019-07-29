@@ -15,6 +15,16 @@
     {% endembed %}
 {% endblock %}
 
+{% block stylesheets %}
+    {{ parent() }}
+    {{ encore_entry_link_tags('calendar') }}
+{% endblock %}
+
+{% block head %}
+    {{ parent() }}
+    {{ encore_entry_script_tags('calendar') }}
+{% endblock %}
+
 {% block javascripts %}
     {{ parent() }}
     <script>
@@ -153,7 +163,7 @@
                         html: true
                     });
                 },
-            {% if not is_punch_mode() and is_granted('create_own_timesheet') %}
+            {% if not is_punch_mode and is_granted('create_own_timesheet') %}
                 dayClick: function(date, jsEvent, view) {
                     // day-clicks are always triggered, unless a selection was created
                     // so clicking in a day (month view) or any slot (week and day view) will trigger a dayClick
@@ -187,7 +197,7 @@
                     var editUrl = '{{ path('timesheet_edit', {id: '-XX-'}) }}'.replace('-XX-', eventObj.id);
                     kimai.getPlugin('modal').openUrlInModal(editUrl);
                 },
-                {% if not is_punch_mode() %}
+                {% if not is_punch_mode %}
                 editable: true,
                 eventDragStart: function(event, jsEvent, ui, view) {
                     window.hidePopover = true;
@@ -205,9 +215,8 @@
                 eventResize: changeHandler,
                 {% endif %}
             {% endif %}
-                /*
-                slotDuration: '00:30:00',                               // TODO make me configurable
-                */
+                slotDuration: '{{ config.slotDuration }}',
+                slotLabelInterval: '{{ config.slotDuration }}',
                 minTime: '{{ config.timeframeBegin }}',
                 maxTime: '{{ config.timeframeEnd }}',
                 defaultTimedEventDuration: '00:30'

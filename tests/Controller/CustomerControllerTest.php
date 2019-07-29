@@ -9,10 +9,13 @@
 
 namespace App\Tests\Controller;
 
+use App\Entity\Project;
 use App\Entity\Timesheet;
 use App\Entity\User;
 use App\Tests\DataFixtures\CustomerFixtures;
 use App\Tests\DataFixtures\TimesheetFixtures;
+use App\Tests\Mocks\CustomerTestMetaFieldSubscriberMock;
+use Doctrine\ORM\EntityManager;
 
 /**
  * @group integration
@@ -32,6 +35,23 @@ class CustomerControllerTest extends ControllerBaseTest
         $this->assertHasDataTable($client);
     }
 
+    public function testBudgetAction()
+    {
+        $client = $this->getClientForAuthenticatedUser(User::ROLE_ADMIN);
+        /** @var EntityManager $em */
+        $em = $client->getContainer()->get('doctrine.orm.entity_manager');
+
+        $fixture = new TimesheetFixtures();
+        $fixture->setAmount(10);
+        $fixture->setProjects($em->getRepository(Project::class)->findAll());
+        $fixture->setUser($this->getUserByRole($em, User::ROLE_ADMIN));
+        $this->importFixture($em, $fixture);
+
+        $client = $this->getClientForAuthenticatedUser(User::ROLE_ADMIN);
+        $this->assertAccessIsGranted($client, '/admin/customer/1/budget');
+        self::assertHasProgressbar($client);
+    }
+
     public function testCreateAction()
     {
         $client = $this->getClientForAuthenticatedUser(User::ROLE_ADMIN);
@@ -41,11 +61,12 @@ class CustomerControllerTest extends ControllerBaseTest
         $kernel = self::bootKernel();
         $container = $kernel->getContainer();
         $defaults = $container->getParameter('kimai.defaults')['customer'];
+        $this->assertNull($defaults['timezone']);
 
         $editForm = $client->getCrawler()->filter('form[name=customer_edit_form]')->form();
         $this->assertEquals($defaults['country'], $editForm->get('customer_edit_form[country]')->getValue());
         $this->assertEquals($defaults['currency'], $editForm->get('customer_edit_form[currency]')->getValue());
-        $this->assertEquals($defaults['timezone'], $editForm->get('customer_edit_form[timezone]')->getValue());
+        $this->assertEquals(date_default_timezone_get(), $editForm->get('customer_edit_form[timezone]')->getValue());
 
         $client->submit($form, [
             'customer_edit_form' => [
@@ -56,6 +77,18 @@ class CustomerControllerTest extends ControllerBaseTest
         $client->followRedirect();
         $this->assertHasDataTable($client);
         $this->assertHasFlashSuccess($client);
+    }
+
+    public function testCreateActionShowsMetaFields()
+    {
+        $client = $this->getClientForAuthenticatedUser(User::ROLE_ADMIN);
+        $client->getContainer()->get('event_dispatcher')->addSubscriber(new CustomerTestMetaFieldSubscriberMock());
+        $this->assertAccessIsGranted($client, '/admin/customer/create');
+        $this->assertTrue($client->getResponse()->isSuccessful());
+
+        $form = $client->getCrawler()->filter('form[name=customer_edit_form]')->form();
+        $this->assertTrue($form->has('customer_edit_form[metaFields][0][value]'));
+        $this->assertFalse($form->has('customer_edit_form[metaFields][1][value]'));
     }
 
     public function testEditAction()

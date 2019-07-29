@@ -17,35 +17,18 @@ use App\Entity\Project;
 class ActivityQuery extends ProjectQuery
 {
     /**
-     * @var Project|int
+     * @var Project|int|null
      */
-    protected $project;
+    private $project;
     /**
      * @var bool
      */
-    protected $orderGlobalsFirst = false;
-    /**
-     * @var bool
-     */
-    protected $globalsOnly = false;
+    private $globalsOnly = false;
 
-    /**
-     * @return bool
-     */
-    public function isOrderGlobalsFirst(): bool
+    public function __construct()
     {
-        return $this->orderGlobalsFirst;
-    }
-
-    /**
-     * @param bool $orderGlobalsFirst
-     * @return ActivityQuery
-     */
-    public function setOrderGlobalsFirst(bool $orderGlobalsFirst)
-    {
-        $this->orderGlobalsFirst = $orderGlobalsFirst;
-
-        return $this;
+        parent::__construct();
+        $this->setOrderBy('name');
     }
 
     /**
@@ -60,15 +43,15 @@ class ActivityQuery extends ProjectQuery
      * @param bool $globalsOnly
      * @return ActivityQuery
      */
-    public function setGlobalsOnly($globalsOnly)
+    public function setGlobalsOnly($globalsOnly): ActivityQuery
     {
-        $this->globalsOnly = $globalsOnly;
+        $this->globalsOnly = (bool) $globalsOnly;
 
         return $this;
     }
 
     /**
-     * @return Project|int
+     * @return Project|int|null
      */
     public function getProject()
     {
@@ -76,13 +59,33 @@ class ActivityQuery extends ProjectQuery
     }
 
     /**
-     * @param Project|int $project
-     * @return $this
+     * @param Project|int|null $project
+     * @return ActivityQuery
      */
-    public function setProject($project = null)
+    public function setProject($project = null): ActivityQuery
     {
         $this->project = $project;
 
         return $this;
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+    public function isDirty(): bool
+    {
+        if (parent::isDirty()) {
+            return true;
+        }
+
+        if ($this->project !== null) {
+            return true;
+        }
+
+        if ($this->globalsOnly !== false) {
+            return true;
+        }
+
+        return false;
     }
 }

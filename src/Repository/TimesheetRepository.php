@@ -12,16 +12,21 @@ namespace App\Repository;
 use App\Entity\Activity;
 use App\Entity\Timesheet;
 use App\Entity\User;
+use App\Model\Statistic\Day;
 use App\Model\Statistic\Month;
 use App\Model\Statistic\Year;
 use App\Model\TimesheetStatistic;
+use App\Repository\Loader\TimesheetLoader;
+use App\Repository\Paginator\LoaderPaginator;
+use App\Repository\Paginator\PaginatorInterface;
 use App\Repository\Query\TimesheetQuery;
 use DateTime;
 use Doctrine\DBAL\Types\Type;
+use Doctrine\ORM\EntityRepository;
 use Doctrine\ORM\QueryBuilder;
 use Pagerfanta\Pagerfanta;
 
-class TimesheetRepository extends AbstractRepository
+class TimesheetRepository extends EntityRepository
 {
     public const STATS_QUERY_DURATION = 'duration';
     public const STATS_QUERY_RATE = 'rate';
@@ -98,6 +103,9 @@ class TimesheetRepository extends AbstractRepository
             case self::STATS_QUERY_MONTHLY:
                 return $this->getMonthlyStats($user, $begin, $end);
 
+            case 'daily':
+                return $this->getDailyStats($user, $begin, $end);
+
             case self::STATS_QUERY_DURATION:
                 $what = 'SUM(t.duration)';
                 break;
@@ -118,7 +126,7 @@ class TimesheetRepository extends AbstractRepository
     }
 
     /**
-     * @param $select
+     * @param string $select
      * @param User $user
      * @return int
      * @throws \Doctrine\ORM\NonUniqueResultException
@@ -253,12 +261,85 @@ class TimesheetRepository extends AbstractRepository
             }
 
             $month = new Month($statRow['month']);
-            $month->setTotalDuration($statRow['duration'])
-                ->setTotalRate($statRow['rate']);
+            $month->setTotalDuration((int) $statRow['duration'])
+                ->setTotalRate((float) $statRow['rate']);
             $years[$curYear]->setMonth($month);
         }
 
         return $years;
+    }
+
+    /**
+     * @param DateTime $begin
+     * @param DateTime $end
+     * @param User|null $user
+     * @return mixed
+     */
+    public function getDailyData(DateTime $begin, DateTime $end, ?User $user = null)
+    {
+        $qb = $this->getEntityManager()->createQueryBuilder();
+
+        $qb
+            ->addSelect('SUM(t.rate) as rate')
+            ->addSelect('SUM(t.duration) as duration')
+            ->addSelect('MONTH(t.begin) as month')
+            ->addSelect('YEAR(t.begin) as year')
+            ->addSelect('DAY(t.begin) as day')
+            ->from(Timesheet::class, 't')
+            ->andWhere($qb->expr()->gte('t.begin', ':from'))
+            ->setParameter('from', $begin, Type::DATETIME)
+            ->andWhere($qb->expr()->lte('t.end', ':to'))
+            ->setParameter('to', $end, Type::DATETIME);
+
+        if (null !== $user) {
+            $qb->andWhere('t.user = :user')
+                ->setParameter('user', $user);
+        }
+
+        $qb
+            ->addGroupBy('year')
+            ->addGroupBy('month')
+            ->addGroupBy('day')
+            ->addOrderBy('year', 'DESC')
+            ->addOrderBy('month', 'ASC')
+            ->addOrderBy('day', 'ASC')
+        ;
+
+        return $qb->getQuery()->execute();
+    }
+
+    /**
+     * @param User $user
+     * @param DateTime $begin
+     * @param DateTime $end
+     * @return Day[]
+     * @throws \Exception
+     */
+    public function getDailyStats(User $user, DateTime $begin, DateTime $end): array
+    {
+        $results = $this->getDailyData($begin, $end, $user);
+
+        /** @var Day[] $days */
+        $days = [];
+
+        // prefill the array
+        $tmp = clone $end;
+        $until = (int) $begin->format('Ymd');
+        while ((int) $tmp->format('Ymd') > $until) {
+            $tmp->modify('-1 day');
+            $last = clone $tmp;
+            $days[$last->format('Ymd')] = new Day($last, 0, 0.00);
+        }
+
+        foreach ($results as $statRow) {
+            $dateTime = new DateTime();
+            $dateTime->setDate($statRow['year'], $statRow['month'], $statRow['day']);
+            $days[$dateTime->format('Ymd')] = new Day($dateTime, (int) $statRow['duration'], (float) $statRow['rate']);
+        }
+
+        ksort($days);
+
+        return array_values($days);
     }
 
     /**
@@ -269,28 +350,28 @@ class TimesheetRepository extends AbstractRepository
     {
         $qb = $this->getEntityManager()->createQueryBuilder();
 
-        $qb->select('t', 'a', 'p', 'c')
+        $qb->select('t')
             ->from(Timesheet::class, 't')
-            ->join('t.activity', 'a')
-            ->join('t.project', 'p')
-            ->join('p.customer', 'c')
-            ->where($qb->expr()->isNotNull('t.begin'))
+            ->andWhere($qb->expr()->isNotNull('t.begin'))
             ->andWhere($qb->expr()->isNull('t.end'))
             ->orderBy('t.begin', 'DESC');
 
-        $params = [];
-
         if (null !== $user) {
             $qb->andWhere('t.user = :user');
-            $params['user'] = $user;
+            $qb->setParameter('user', $user);
         }
 
-        return $qb->getQuery()->execute($params);
+        $results = $qb->getQuery()->getResult();
+
+        $loader = new TimesheetLoader($qb->getEntityManager());
+        $loader->loadResults($results);
+
+        return $results;
     }
 
     /**
      * @param User $user
-     * @param int $limit
+     * @param int $hardLimit
      * @return int
      * @throws RepositoryException
      * @throws \Doctrine\ORM\ORMException
@@ -324,22 +405,51 @@ class TimesheetRepository extends AbstractRepository
         return $counter;
     }
 
+    public function getPagerfantaForQuery(TimesheetQuery $query): Pagerfanta
+    {
+        $paginator = new Pagerfanta($this->getPaginatorForQuery($query));
+        $paginator->setMaxPerPage($query->getPageSize());
+        $paginator->setCurrentPage($query->getPage());
+
+        return $paginator;
+    }
+
+    protected function getPaginatorForQuery(TimesheetQuery $query): PaginatorInterface
+    {
+        $qb = $this->getQueryBuilderForQuery($query);
+        $qb
+            ->resetDQLPart('select')
+            ->resetDQLPart('orderBy')
+            ->select($qb->expr()->countDistinct('t.id'))
+        ;
+        $counter = (int) $qb->getQuery()->getSingleScalarResult();
+
+        $qb = $this->getQueryBuilderForQuery($query);
+
+        return new LoaderPaginator(new TimesheetLoader($qb->getEntityManager()), $qb, $counter);
+    }
+
     /**
      * @param TimesheetQuery $query
-     * @return QueryBuilder|Pagerfanta|array
+     * @return Timesheet[]
      */
-    public function findByQuery(TimesheetQuery $query)
+    public function getTimesheetsForQuery(TimesheetQuery $query): iterable
+    {
+        // this is using the paginator internally, as it will load all joined entities into the working unit
+        // do not "optimize" to use the query directly, as it would results in hundreds of additional lazy queries
+        $paginator = $this->getPaginatorForQuery($query);
+
+        return $paginator->getAll();
+    }
+
+    private function getQueryBuilderForQuery(TimesheetQuery $query): QueryBuilder
     {
         $qb = $this->getEntityManager()->createQueryBuilder();
 
-        $qb->select('t', 'a', 'p', 'c', 'u', 'tags')
+        $qb
+            ->select('t')
             ->from(Timesheet::class, 't')
-            ->leftJoin('t.activity', 'a')
-            ->leftJoin('t.user', 'u')
-            ->leftJoin('t.project', 'p')
-            ->leftJoin('p.customer', 'c')
-            ->leftJoin('t.tags', 'tags')
-            ->orderBy('t.' . $query->getOrderBy(), $query->getOrder());
+        ;
 
         if (null !== $query->getUser()) {
             $qb->andWhere('t.user = :user')
@@ -378,6 +488,7 @@ class TimesheetRepository extends AbstractRepository
                 $qb->andWhere('t.project = :project')
                     ->setParameter('project', $query->getProject());
             } elseif (null !== $query->getCustomer()) {
+                $qb->join('t.project', 'p');
                 $qb->andWhere('p.customer = :customer')
                     ->setParameter('customer', $query->getCustomer());
             }
@@ -389,7 +500,9 @@ class TimesheetRepository extends AbstractRepository
                 ->setParameter('tags', $query->getTags());
         }
 
-        return $this->getBaseQueryResult($qb, $query);
+        $qb->orderBy('t.' . $query->getOrderBy(), $query->getOrder());
+
+        return $qb;
     }
 
     /**
@@ -438,15 +551,17 @@ class TimesheetRepository extends AbstractRepository
         $ids = array_column($results, 'maxid');
 
         $qb = $this->getEntityManager()->createQueryBuilder();
-        $qb->select('t', 'a', 'p', 'c')
+        $qb->select('t')
             ->from(Timesheet::class, 't')
-            ->join('t.activity', 'a')
-            ->join('t.project', 'p')
-            ->join('p.customer', 'c')
             ->andWhere($qb->expr()->in('t.id', $ids))
             ->orderBy('t.end', 'DESC')
         ;
 
-        return $qb->getQuery()->getResult();
+        $results = $qb->getQuery()->getResult();
+
+        $loader = new TimesheetLoader($qb->getEntityManager());
+        $loader->loadResults($results);
+
+        return $results;
     }
 }

@@ -95,19 +95,20 @@ abstract class ControllerBaseTest extends WebTestCase
      * @param string $url
      * @param string $method
      */
-    protected function assertRequestIsSecured(Client $client, string $url, $method = 'GET')
+    protected function assertRequestIsSecured(Client $client, string $url, ?string $method = 'GET')
     {
         $this->request($client, $url, $method);
 
-        /* @var RedirectResponse $response */
+        /** @var RedirectResponse $response */
         $response = $client->getResponse();
+        self::assertInstanceOf(RedirectResponse::class, $response);
 
-        $this->assertTrue(
+        self::assertTrue(
             $response->isRedirect(),
             sprintf('The secure URL %s is not protected.', $url)
         );
 
-        $this->assertStringEndsWith(
+        self::assertStringEndsWith(
             '/login',
             $response->getTargetUrl(),
             sprintf('The secure URL %s does not redirect to the login form.', $url)
@@ -133,7 +134,7 @@ abstract class ControllerBaseTest extends WebTestCase
     {
         $client = $this->getClientForAuthenticatedUser($role);
         $client->request($method, $this->createUrl($url));
-        $this->assertFalse(
+        self::assertFalse(
             $client->getResponse()->isSuccessful(),
             sprintf('The secure URL %s is not protected for role %s', $url, $role)
         );
@@ -142,45 +143,32 @@ abstract class ControllerBaseTest extends WebTestCase
 
     protected function assertAccessDenied(Client $client)
     {
-        $this->assertFalse(
+        self::assertFalse(
             $client->getResponse()->isSuccessful(),
             'Access is not denied for URL: ' . $client->getRequest()->getUri()
         );
-        $this->assertContains(
+        self::assertContains(
             'Symfony\Component\Security\Core\Exception\AccessDeniedException',
             $client->getResponse()->getContent(),
             'Could not find AccessDeniedException in response'
         );
     }
 
-    /**
-     * @param Client $client
-     * @param $url
-     * @param string $method
-     * @param array $parameters
-     */
-    protected function assertAccessIsGranted(Client $client, $url, $method = 'GET', array $parameters = [])
+    protected function assertAccessIsGranted(Client $client, string $url, string $method = 'GET', array $parameters = [])
     {
         $this->request($client, $url, $method, $parameters);
-        $this->assertTrue($client->getResponse()->isSuccessful());
+        self::assertTrue($client->getResponse()->isSuccessful());
     }
 
-    /**
-     * @param Client $client
-     */
     protected function assertRouteNotFound(Client $client)
     {
-        $this->assertFalse($client->getResponse()->isSuccessful());
-        $this->assertEquals(404, $client->getResponse()->getStatusCode());
+        self::assertFalse($client->getResponse()->isSuccessful());
+        self::assertEquals(404, $client->getResponse()->getStatusCode());
     }
 
-    /**
-     * @param Client $client
-     * @param string $classname
-     */
-    protected function assertMainContentClass(Client $client, $classname)
+    protected function assertMainContentClass(Client $client, string $classname)
     {
-        $this->assertContains('<section class="content ' . $classname . '">', $client->getResponse()->getContent());
+        self::assertContains('<section class="content ' . $classname . '">', $client->getResponse()->getContent());
     }
 
     /**
@@ -188,7 +176,18 @@ abstract class ControllerBaseTest extends WebTestCase
      */
     protected function assertHasDataTable(Client $client)
     {
-        $this->assertContains('<table class="table table-striped table-hover dataTable" role="grid" data-reload-event="', $client->getResponse()->getContent());
+        self::assertContains('<table class="table table-striped table-hover dataTable" role="grid" data-reload-event="', $client->getResponse()->getContent());
+    }
+
+    /**
+     * @param Client $client
+     */
+    protected static function assertHasProgressbar(Client $client)
+    {
+        $content = $client->getResponse()->getContent();
+        self::assertContains('<div class="progress-bar progress-bar-', $content);
+        self::assertContains('" role="progressbar" aria-valuenow="', $content);
+        self::assertContains('" aria-valuemin="0" aria-valuemax="100" style="width: ', $content);
     }
 
     /**
@@ -199,7 +198,7 @@ abstract class ControllerBaseTest extends WebTestCase
     protected function assertDataTableRowCount(Client $client, string $id, int $count)
     {
         $node = $client->getCrawler()->filter('section.content div#' . $id . ' table.table-striped tbody tr');
-        $this->assertEquals($count, $node->count());
+        self::assertEquals($count, $node->count());
     }
 
     /**
@@ -209,13 +208,13 @@ abstract class ControllerBaseTest extends WebTestCase
     protected function assertPageActions(Client $client, array $buttons)
     {
         $node = $client->getCrawler()->filter('section.content-header div.breadcrumb div.box-tools div.btn-group a.btn');
-        $this->assertEquals(count($buttons), $node->count());
+        self::assertEquals(count($buttons), $node->count());
 
         foreach ($node->getIterator() as $element) {
             $expectedClass = str_replace('btn btn-default btn-', '', $element->getAttribute('class'));
-            $this->assertArrayHasKey($expectedClass, $buttons);
+            self::assertArrayHasKey($expectedClass, $buttons);
             $expectedUrl = $buttons[$expectedClass];
-            $this->assertEquals($expectedUrl, $element->getAttribute('href'));
+            self::assertEquals($expectedUrl, $element->getAttribute('href'));
         }
     }
 
@@ -240,7 +239,7 @@ abstract class ControllerBaseTest extends WebTestCase
         $submittedForm = $result->filter($formSelector);
         $validationErrors = $submittedForm->filter('li.text-danger');
 
-        $this->assertEquals(
+        self::assertEquals(
             count($fieldNames),
             count($validationErrors),
             sprintf('Expected %s validation errors, found %s', count($fieldNames), count($validationErrors))
@@ -248,15 +247,15 @@ abstract class ControllerBaseTest extends WebTestCase
 
         foreach ($fieldNames as $name) {
             $field = $submittedForm->filter($name);
-            $this->assertNotNull($field, 'Could not find form field: ' . $name);
+            self::assertNotNull($field, 'Could not find form field: ' . $name);
             $list = $field->nextAll();
-            $this->assertNotNull($list, 'Form field has no validation message: ' . $name);
+            self::assertNotNull($list, 'Form field has no validation message: ' . $name);
 
             $validation = $list->filter('li.text-danger');
             if (count($validation) < 1) {
                 // decorated form fields with icon have a different html structure, see kimai-theme.html.twig
                 $classes = $field->parents()->getNode(1)->getAttribute('class');
-                $this->assertContains('has-error', $classes, 'Form field has no validation message: ' . $name);
+                self::assertContains('has-error', $classes, 'Form field has no validation message: ' . $name);
             }
         }
     }
@@ -276,22 +275,14 @@ abstract class ControllerBaseTest extends WebTestCase
     protected function assertCalloutWidgetWithMessage(Client $client, string $message)
     {
         $node = $client->getCrawler()->filter('div.callout.callout-warning.lead');
-        $this->assertContains($message, $node->text());
+        self::assertContains($message, $node->text());
     }
 
-    /**
-     * @param Client $client
-     * @param string|null $message
-     */
     protected function assertHasFlashDeleteSuccess(Client $client)
     {
         $this->assertHasFlashSuccess($client, 'Entry was deleted');
     }
 
-    /**
-     * @param Client $client
-     * @param string|null $message
-     */
     protected function assertHasFlashSaveSuccess(Client $client)
     {
         $this->assertHasFlashSuccess($client, 'Saved changes');
@@ -304,9 +295,9 @@ abstract class ControllerBaseTest extends WebTestCase
     protected function assertHasFlashSuccess(Client $client, string $message = null)
     {
         $node = $client->getCrawler()->filter('div.alert.alert-success.alert-dismissible');
-        $this->assertNotEmpty($node->text());
+        self::assertNotEmpty($node->text());
         if (null !== $message) {
-            $this->assertContains($message, $node->text());
+            self::assertContains($message, $node->text());
         }
     }
 
@@ -317,9 +308,9 @@ abstract class ControllerBaseTest extends WebTestCase
     protected function assertHasFlashError(Client $client, string $message = null)
     {
         $node = $client->getCrawler()->filter('div.alert.alert-error.alert-dismissible');
-        $this->assertNotEmpty($node->text());
+        self::assertNotEmpty($node->text());
         if (null !== $message) {
-            $this->assertContains($message, $node->text());
+            self::assertContains($message, $node->text());
         }
     }
 
@@ -329,12 +320,12 @@ abstract class ControllerBaseTest extends WebTestCase
      */
     protected function assertIsRedirect(Client $client, $url = null)
     {
-        $this->assertTrue($client->getResponse()->isRedirect());
+        self::assertTrue($client->getResponse()->isRedirect());
         if (null === $url) {
             return;
         }
 
-        $this->assertTrue($client->getResponse()->headers->has('Location'));
-        $this->assertStringEndsWith($url, $client->getResponse()->headers->get('Location'));
+        self::assertTrue($client->getResponse()->headers->has('Location'));
+        self::assertStringEndsWith($url, $client->getResponse()->headers->get('Location'));
     }
 }

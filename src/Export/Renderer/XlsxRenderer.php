@@ -13,7 +13,7 @@ use App\Export\RendererInterface;
 use PhpOffice\PhpSpreadsheet\IOFactory;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 
-class XlsxRenderer extends AbstractSpreadsheetRenderer implements RendererInterface
+final class XlsxRenderer extends AbstractSpreadsheetRenderer implements RendererInterface
 {
     /**
      * @return string
@@ -33,12 +33,16 @@ class XlsxRenderer extends AbstractSpreadsheetRenderer implements RendererInterf
 
     /**
      * @param Spreadsheet $spreadsheet
-     * @return bool|string
-     * @throws \PhpOffice\PhpSpreadsheet\Writer\Exception
+     * @return string
+     * @throws \Exception
      */
     protected function saveSpreadsheet(Spreadsheet $spreadsheet): string
     {
         $filename = tempnam(sys_get_temp_dir(), 'kimai-export-xlsx');
+        if (false === $filename) {
+            throw new \Exception('Could not open temporary file');
+        }
+
         $writer = IOFactory::createWriter($spreadsheet, 'Xlsx');
         $writer->save($filename);
 

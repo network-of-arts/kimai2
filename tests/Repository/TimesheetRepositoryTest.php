@@ -14,38 +14,33 @@ use App\Entity\Project;
 use App\Entity\Tag;
 use App\Entity\Timesheet;
 use App\Entity\User;
+use App\Repository\ActivityRepository;
+use App\Repository\ProjectRepository;
 use App\Repository\Query\BaseQuery;
 use App\Repository\Query\TimesheetQuery;
 use App\Repository\RepositoryException;
+use App\Repository\TimesheetRepository;
 use App\Tests\DataFixtures\TimesheetFixtures;
-use Doctrine\ORM\QueryBuilder;
 use Pagerfanta\Pagerfanta;
 
 /**
  * @covers \App\Repository\TimesheetRepository
+ * @group integration
  */
 class TimesheetRepositoryTest extends AbstractRepositoryTest
 {
     public function testResultTypeForQueryState()
     {
         $em = $this->getEntityManager();
+        /** @var TimesheetRepository $repository */
         $repository = $em->getRepository(Timesheet::class);
 
         $query = new TimesheetQuery();
 
-        $result = $repository->findByQuery($query);
+        $result = $repository->getPagerfantaForQuery($query);
         $this->assertInstanceOf(Pagerfanta::class, $result);
 
-        $query->setResultType(BaseQuery::RESULT_TYPE_QUERYBUILDER);
-        $result = $repository->findByQuery($query);
-        $this->assertInstanceOf(QueryBuilder::class, $result);
-
-        $query->setResultType(BaseQuery::RESULT_TYPE_PAGER);
-        $result = $repository->findByQuery($query);
-        $this->assertInstanceOf(Pagerfanta::class, $result);
-
-        $query->setResultType(BaseQuery::RESULT_TYPE_OBJECTS);
-        $result = $repository->findByQuery($query);
+        $result = $repository->getTimesheetsForQuery($query);
         $this->assertIsArray($result);
     }
 
@@ -53,6 +48,7 @@ class TimesheetRepositoryTest extends AbstractRepositoryTest
     {
         $em = $this->getEntityManager();
         $user = $this->getUserByRole($em, User::ROLE_USER);
+        /** @var TimesheetRepository $repository */
         $repository = $em->getRepository(Timesheet::class);
 
         $fixtures = new TimesheetFixtures();
@@ -66,7 +62,8 @@ class TimesheetRepositoryTest extends AbstractRepositoryTest
         $query->setUser($user);
         $query->setState(TimesheetQuery::STATE_STOPPED);
 
-        $entities = $repository->findByQuery($query);
+        /** @var array $entities */
+        $entities = $repository->getTimesheetsForQuery($query);
 
         $this->assertCount(1, $entities);
         $this->assertInstanceOf(Timesheet::class, $entities[0]);
@@ -81,6 +78,7 @@ class TimesheetRepositoryTest extends AbstractRepositoryTest
     {
         $em = $this->getEntityManager();
         $user = $this->getUserByRole($em, User::ROLE_USER);
+        /** @var TimesheetRepository $repository */
         $repository = $em->getRepository(Timesheet::class);
 
         $fixtures = new TimesheetFixtures();
@@ -100,12 +98,15 @@ class TimesheetRepositoryTest extends AbstractRepositoryTest
     public function testSave()
     {
         $em = $this->getEntityManager();
+        /** @var ActivityRepository $activityRepository */
         $activityRepository = $em->getRepository(Activity::class);
         $activity = $activityRepository->find(1);
+        /** @var ProjectRepository $projectRepository */
         $projectRepository = $em->getRepository(Project::class);
         $project = $projectRepository->find(1);
 
         $user = $this->getUserByRole($em, User::ROLE_USER);
+        /** @var TimesheetRepository $repository */
         $repository = $em->getRepository(Timesheet::class);
         $timesheet = new Timesheet();
         $timesheet
@@ -124,12 +125,15 @@ class TimesheetRepositoryTest extends AbstractRepositoryTest
     public function testSaveWithTags()
     {
         $em = $this->getEntityManager();
+        /** @var ActivityRepository $activityRepository */
         $activityRepository = $em->getRepository(Activity::class);
         $activity = $activityRepository->find(1);
+        /** @var ProjectRepository $projectRepository */
         $projectRepository = $em->getRepository(Project::class);
         $project = $projectRepository->find(1);
 
         $user = $this->getUserByRole($em, User::ROLE_USER);
+        /** @var TimesheetRepository $repository */
         $repository = $em->getRepository(Timesheet::class);
         $tagOne = new Tag();
         $tagOne->setName('Travel');

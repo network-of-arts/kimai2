@@ -10,11 +10,14 @@
 namespace App\Tests\Entity;
 
 use App\Entity\Activity;
+use App\Entity\ActivityMeta;
+use Doctrine\Common\Collections\Collection;
+use PHPUnit\Framework\TestCase;
 
 /**
  * @covers \App\Entity\Activity
  */
-class ActivityTest extends AbstractEntityTest
+class ActivityTest extends TestCase
 {
     public function testDefaultValues()
     {
@@ -24,10 +27,14 @@ class ActivityTest extends AbstractEntityTest
         $this->assertNull($sut->getName());
         $this->assertNull($sut->getComment());
         $this->assertTrue($sut->getVisible());
-        // timesheets
         $this->assertNull($sut->getFixedRate());
         $this->assertNull($sut->getHourlyRate());
         $this->assertNull($sut->getColor());
+        $this->assertEquals(0.0, $sut->getBudget());
+        $this->assertEquals(0, $sut->getTimeBudget());
+        $this->assertInstanceOf(Collection::class, $sut->getMetaFields());
+        $this->assertEquals(0, $sut->getMetaFields()->count());
+        $this->assertNull($sut->getMetaField('foo'));
     }
 
     public function testSetterAndGetter()
@@ -48,7 +55,41 @@ class ActivityTest extends AbstractEntityTest
 
         $this->assertInstanceOf(Activity::class, $sut->setFixedRate(13.47));
         $this->assertEquals(13.47, $sut->getFixedRate());
+
         $this->assertInstanceOf(Activity::class, $sut->setHourlyRate(99));
         $this->assertEquals(99, $sut->getHourlyRate());
+
+        $this->assertInstanceOf(Activity::class, $sut->setBudget(12345.67));
+        $this->assertEquals(12345.67, $sut->getBudget());
+
+        $this->assertInstanceOf(Activity::class, $sut->setTimeBudget(937321));
+        $this->assertEquals(937321, $sut->getTimeBudget());
+    }
+
+    public function testMetaFields()
+    {
+        $sut = new Activity();
+        $meta = new ActivityMeta();
+        $meta->setName('foo')->setValue('bar')->setType('test');
+        $this->assertInstanceOf(Activity::class, $sut->setMetaField($meta));
+        self::assertEquals(1, $sut->getMetaFields()->count());
+        $result = $sut->getMetaField('foo');
+        self::assertSame($result, $meta);
+        self::assertEquals('test', $result->getType());
+
+        $meta2 = new ActivityMeta();
+        $meta2->setName('foo')->setValue('bar')->setType('test2');
+        $this->assertInstanceOf(Activity::class, $sut->setMetaField($meta2));
+        self::assertEquals(1, $sut->getMetaFields()->count());
+        self::assertCount(0, $sut->getVisibleMetaFields());
+
+        $result = $sut->getMetaField('foo');
+        self::assertSame($result, $meta);
+        self::assertEquals('test2', $result->getType());
+
+        $sut->setMetaField((new ActivityMeta())->setName('blub')->setIsVisible(true));
+        $sut->setMetaField((new ActivityMeta())->setName('blab')->setIsVisible(true));
+        self::assertEquals(3, $sut->getMetaFields()->count());
+        self::assertCount(2, $sut->getVisibleMetaFields());
     }
 }

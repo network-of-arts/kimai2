@@ -29,7 +29,6 @@ use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Style\SymfonyStyle;
-use Symfony\Component\Security\Core\Encoder\UserPasswordEncoder;
 use Symfony\Component\Security\Core\Encoder\UserPasswordEncoderInterface;
 use Symfony\Component\Validator\Validator\ValidatorInterface;
 
@@ -48,7 +47,7 @@ class KimaiImporterCommand extends Command
 
     /**
      * Create the user default passwords
-     * @var UserPasswordEncoder
+     * @var UserPasswordEncoderInterface
      */
     protected $encoder;
     /**
@@ -389,7 +388,7 @@ class KimaiImporterCommand extends Command
 
     /**
      * Thanks to "xelozz -at- gmail.com", see http://php.net/manual/en/function.memory-get-usage.php#96280
-     * @param $size
+     * @param int $size
      * @return string
      */
     protected function bytesHumanReadable($size)
@@ -402,7 +401,7 @@ class KimaiImporterCommand extends Command
     }
 
     /**
-     * @param $table
+     * @param string $table
      * @param array $where
      * @return array
      */
@@ -429,7 +428,7 @@ class KimaiImporterCommand extends Command
 
     /**
      * @param SymfonyStyle $io
-     * @param $object
+     * @param object $object
      * @return bool
      */
     protected function validateImport(SymfonyStyle $io, $object)
@@ -646,7 +645,7 @@ class KimaiImporterCommand extends Command
      * ["visible"]=> string(1) "1"
      * --- ["filter"]=> string(1) "0"
      * ["trash"]=> string(1) "1"
-     * --- ["budget"]=> string(4) "0.00"
+     * ["budget"]=> string(4) "0.00"
      * --- ["effort"]=> NULL
      * --- ["approved"]=> NULL
      * --- ["internal"]=> string(1) "0"
@@ -678,6 +677,7 @@ class KimaiImporterCommand extends Command
                 ->setName($name)
                 ->setComment($oldProject['comment'] ?: null)
                 ->setVisible($isActive)
+                ->setBudget($oldProject['budget'] ?: 0)
             ;
 
             foreach ($fixedRates as $fixedRow) {
@@ -734,7 +734,7 @@ class KimaiImporterCommand extends Command
      * $activityToProject
      * ["projectID"]=> string(1) "1"
      * ["activityID"]=> string(1) "1"
-     * -- ["budget"]=> string(4) "0.00"
+     * ["budget"]=> string(4) "0.00"
      * -- ["effort"]=> string(4) "0.00"
      * -- ["approved"]=> string(4) "0.00"
      *
@@ -832,6 +832,7 @@ class KimaiImporterCommand extends Command
             ->setName($name)
             ->setComment($oldActivity['comment'] ?: null)
             ->setVisible($isActive)
+            ->setBudget($oldActivity['budget'] ?: 0)
         ;
 
         if (null !== $projectId) {

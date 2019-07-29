@@ -42,6 +42,10 @@ class TimesheetFixtures extends Fixture
      */
     protected $activities = [];
     /**
+     * @var Project[]
+     */
+    protected $projects = [];
+    /**
      * @var string
      */
     protected $startDate = '2018-04-01';
@@ -58,7 +62,7 @@ class TimesheetFixtures extends Fixture
      */
     protected $allowEmptyDescriptions = true;
     /**
-     * @var int
+     * @var bool
      */
     protected $exported = false;
     /**
@@ -173,6 +177,17 @@ class TimesheetFixtures extends Fixture
     }
 
     /**
+     * @param Project[] $projects
+     * @return $this
+     */
+    public function setProjects(array $projects)
+    {
+        $this->projects = $projects;
+
+        return $this;
+    }
+
+    /**
      * @param bool $useTags
      * @return TimesheetFixtures
      */
@@ -204,7 +219,10 @@ class TimesheetFixtures extends Fixture
             $activities = $this->getAllActivities($manager);
         }
 
-        $projects = $this->getAllProjects($manager);
+        $projects = $this->projects;
+        if (empty($projects)) {
+            $projects = $this->getAllProjects($manager);
+        }
 
         $faker = Factory::create();
         $user = $this->user;
@@ -265,11 +283,7 @@ class TimesheetFixtures extends Fixture
         $manager->flush();
     }
 
-    /**
-     * @param $cnt
-     * @return array
-     */
-    protected function getTagObjectList($cnt)
+    protected function getTagObjectList(int $cnt): array
     {
         if (true === $this->useTags) {
             $tagObject = new Tag();
@@ -281,11 +295,7 @@ class TimesheetFixtures extends Fixture
         return [];
     }
 
-    /**
-     * @param $i
-     * @return bool|\DateTime
-     */
-    protected function getDateTime($i)
+    protected function getDateTime(int $i): \DateTime
     {
         $start = \DateTime::createFromFormat('Y-m-d', $this->startDate);
         $start->modify("+ $i days");

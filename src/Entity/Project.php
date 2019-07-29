@@ -9,14 +9,24 @@
 
 namespace App\Entity;
 
+use Doctrine\Common\Collections\ArrayCollection;
+use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Validator\Constraints as Assert;
 
 /**
- * @ORM\Table(name="kimai2_projects")
+ * @ORM\Table(name="kimai2_projects",
+ *     indexes={
+ *          @ORM\Index(columns={"customer_id","visible","name"}),
+ *          @ORM\Index(columns={"customer_id","visible","id"})
+ *     }
+ * )
  * @ORM\Entity(repositoryClass="App\Repository\ProjectRepository")
+ *
+ * columns={"customer_id","visible","name"} => IDX_407F12069395C3F37AB0E8595E237E06 => project administration without filter
+ * columns={"customer_id","visible","id"}   => IDX_407F12069395C3F37AB0E859BF396750 => used in joins between project and customer, eg. dropdowns and activity administration page
  */
-class Project
+class Project implements EntityWithMetaFields
 {
     /**
      * @var int
@@ -30,7 +40,7 @@ class Project
     /**
      * @var Customer
      *
-     * @ORM\ManyToOne(targetEntity="App\Entity\Customer", inversedBy="projects")
+     * @ORM\ManyToOne(targetEntity="App\Entity\Customer")
      * @ORM\JoinColumn(onDelete="CASCADE", nullable=false)
      * @Assert\NotNull()
      */
@@ -68,74 +78,48 @@ class Project
      */
     private $visible = true;
 
-    /**
-     * @var float
-     *
-     * @ORM\Column(name="budget", type="float", precision=10, scale=2, nullable=false)
-     * @Assert\NotNull()
-     */
-    private $budget = 0.00;
-
-    /**
-     * @var Activity[]
-     *
-     * @ORM\OneToMany(targetEntity="App\Entity\Activity", mappedBy="project")
-     */
-    private $activities;
-
     // keep the trait include exactly here, for placing the column at the correct position
     use RatesTrait;
     use ColorTrait;
+    use BudgetTrait;
 
     /**
-     * @var Timesheet[]
+     * @var ProjectMeta[]|Collection
      *
-     * @ORM\OneToMany(targetEntity="App\Entity\Timesheet", mappedBy="project")
+     * @ORM\OneToMany(targetEntity="App\Entity\ProjectMeta", mappedBy="project", cascade={"persist"})
      */
-    private $timesheets;
+    private $meta;
 
-    /**
-     * @return int
-     */
-    public function getId()
+    public function __construct()
+    {
+        $this->meta = new ArrayCollection();
+    }
+
+    public function getId(): ?int
     {
         return $this->id;
     }
 
-    /**
-     * @return Customer
-     */
-    public function getCustomer()
+    public function getCustomer(): ?Customer
     {
         return $this->customer;
     }
 
-    /**
-     * @param Customer $customer
-     * @return Project
-     */
-    public function setCustomer($customer)
+    public function setCustomer(Customer $customer): Project
     {
         $this->customer = $customer;
 
         return $this;
     }
 
-    /**
-     * @param string $name
-     * @return Project
-     */
-    public function setName($name)
+    public function setName(string $name): Project
     {
         $this->name = $name;
 
         return $this;
     }
 
-    /**
-     * @return string
-     */
-    public function getName()
+    public function getName(): ?string
     {
         return $this->name;
     }
@@ -144,26 +128,19 @@ class Project
      * @param string $comment
      * @return Project
      */
-    public function setComment($comment)
+    public function setComment($comment): Project
     {
         $this->comment = $comment;
 
         return $this;
     }
 
-    /**
-     * @return string
-     */
-    public function getComment()
+    public function getComment(): ?string
     {
         return $this->comment;
     }
 
-    /**
-     * @param bool $visible
-     * @return Project
-     */
-    public function setVisible($visible)
+    public function setVisible(bool $visible): Project
     {
         $this->visible = $visible;
 
@@ -173,66 +150,9 @@ class Project
     /**
      * @return bool
      */
-    public function getVisible()
+    public function getVisible(): bool
     {
         return $this->visible;
-    }
-
-    /**
-     * @param float $budget
-     * @return Project
-     */
-    public function setBudget($budget)
-    {
-        $this->budget = $budget;
-
-        return $this;
-    }
-
-    /**
-     * @return float
-     */
-    public function getBudget()
-    {
-        return $this->budget;
-    }
-
-    /**
-     * @param Timesheet[] $timesheets
-     * @return Project
-     */
-    public function setTimesheets($timesheets)
-    {
-        $this->timesheets = $timesheets;
-
-        return $this;
-    }
-
-    /**
-     * @return Timesheet[]
-     */
-    public function getTimesheets()
-    {
-        return $this->timesheets;
-    }
-
-    /**
-     * @param Activity[] $activities
-     * @return Project
-     */
-    public function setActivities($activities)
-    {
-        $this->activities = $activities;
-
-        return $this;
-    }
-
-    /**
-     * @return Activity[]
-     */
-    public function getActivities()
-    {
-        return $this->activities;
     }
 
     /**
@@ -247,9 +167,58 @@ class Project
      * @param string $orderNumber
      * @return Project
      */
-    public function setOrderNumber($orderNumber)
+    public function setOrderNumber($orderNumber): Project
     {
         $this->orderNumber = $orderNumber;
+
+        return $this;
+    }
+
+    /**
+     * @internal only here for symfony forms
+     * @return Collection|MetaTableTypeInterface[]
+     */
+    public function getMetaFields(): Collection
+    {
+        return $this->meta;
+    }
+
+    /**
+     * @return MetaTableTypeInterface[]
+     */
+    public function getVisibleMetaFields(): array
+    {
+        $all = [];
+        foreach ($this->meta as $meta) {
+            if ($meta->isVisible()) {
+                $all[] = $meta;
+            }
+        }
+
+        return $all;
+    }
+
+    public function getMetaField(string $name): ?MetaTableTypeInterface
+    {
+        foreach ($this->meta as $field) {
+            if ($field->getName() === $name) {
+                return $field;
+            }
+        }
+
+        return null;
+    }
+
+    public function setMetaField(MetaTableTypeInterface $meta): EntityWithMetaFields
+    {
+        if (null === ($current = $this->getMetaField($meta->getName()))) {
+            $meta->setEntity($this);
+            $this->meta->add($meta);
+
+            return $this;
+        }
+
+        $current->merge($meta);
 
         return $this;
     }

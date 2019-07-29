@@ -14,10 +14,12 @@ namespace App\API;
 use App\Configuration\TimesheetConfiguration;
 use App\Entity\Timesheet;
 use App\Entity\User;
-use App\Form\TimesheetEditForm;
+use App\Form\API\TimesheetApiEditForm;
 use App\Repository\Query\TimesheetQuery;
 use App\Repository\TagRepository;
 use App\Repository\TimesheetRepository;
+use App\Timesheet\TrackingMode\TrackingModeInterface;
+use App\Timesheet\TrackingModeService;
 use App\Timesheet\UserDateTimeFactory;
 use Doctrine\Common\Collections\ArrayCollection;
 use FOS\RestBundle\Controller\Annotations as Rest;
@@ -62,21 +64,30 @@ class TimesheetController extends BaseApiController
      * @var TagRepository
      */
     protected $tagRepository;
-
     /**
-     * @param ViewHandlerInterface $viewHandler
-     * @param TimesheetRepository $repository
-     * @param UserDateTimeFactory $dateTime
-     * @param TimesheetConfiguration $configuration
-     * @param TagRepository $tagRepository
+     * @var TrackingModeService
      */
-    public function __construct(ViewHandlerInterface $viewHandler, TimesheetRepository $repository, UserDateTimeFactory $dateTime, TimesheetConfiguration $configuration, TagRepository $tagRepository)
-    {
+    protected $trackingModeService;
+
+    public function __construct(
+        ViewHandlerInterface $viewHandler,
+        TimesheetRepository $repository,
+        UserDateTimeFactory $dateTime,
+        TimesheetConfiguration $configuration,
+        TagRepository $tagRepository,
+        TrackingModeService $trackingModeService
+    ) {
         $this->viewHandler = $viewHandler;
         $this->repository = $repository;
         $this->configuration = $configuration;
         $this->dateTime = $dateTime;
         $this->tagRepository = $tagRepository;
+        $this->trackingModeService = $trackingModeService;
+    }
+
+    protected function getTrackingMode(): TrackingModeInterface
+    {
+        return $this->trackingModeService->getActiveMode();
     }
 
     /**
@@ -97,7 +108,7 @@ class TimesheetController extends BaseApiController
      * @Rest\QueryParam(name="activity", requirements="\d+", strict=true, nullable=true, description="Activity ID to filter timesheets")
      * @Rest\QueryParam(name="page", requirements="\d+", strict=true, nullable=true, description="The page to display, renders a 404 if not found (default: 1)")
      * @Rest\QueryParam(name="size", requirements="\d+", strict=true, nullable=true, description="The amount of entries for each page (default: 50)")
-     * @Rest\QueryParam(name="tags", requirements="[a-zA-Z0-9 -,]+", strict=true, nullable=true, description="The name of tags which are in the datasets")
+     * @Rest\QueryParam(name="tags", requirements="[a-zA-Z0-9 \-,]+", strict=true, nullable=true, description="The name of tags which are in the datasets")
      * @Rest\QueryParam(name="orderBy", requirements="id|begin|end|rate", strict=true, nullable=true, description="The field by which results will be ordered. Allowed values: id, begin, end, rate (default: begin)")
      * @Rest\QueryParam(name="order", requirements="ASC|DESC", strict=true, nullable=true, description="The result order. Allowed values: ASC, DESC (default: DESC)")
      * @Rest\QueryParam(name="begin", requirements=@Constraints\DateTime(format="Y-m-d\TH:i:s"), strict=true, nullable=true, description="Only records after this date will be included (format: HTML5)")
@@ -116,7 +127,6 @@ class TimesheetController extends BaseApiController
     {
         $query = new TimesheetQuery();
         $query->setUser($this->getUser());
-        $query->setResultType(TimesheetQuery::RESULT_TYPE_PAGER);
 
         if ($this->isGranted('view_other_timesheet') && null !== ($user = $paramFetcher->get('user'))) {
             if ('all' === $user) {
@@ -187,7 +197,7 @@ class TimesheetController extends BaseApiController
         }
 
         /** @var Pagerfanta $data */
-        $data = $this->repository->findByQuery($query);
+        $data = $this->repository->getPagerfantaForQuery($query);
         $data = (array) $data->getCurrentPageResults();
 
         $view = new View($data, 200);
@@ -223,17 +233,18 @@ class TimesheetController extends BaseApiController
      */
     public function getAction($id)
     {
-        $timesheet = $this->repository->find($id);
+        /** @var Timesheet $data */
+        $data = $this->repository->find($id);
 
-        if (null === $timesheet) {
+        if (null === $data) {
             throw new NotFoundException();
         }
 
-        if (!$this->isGranted('view', $timesheet)) {
+        if (!$this->isGranted('view', $data)) {
             throw new AccessDeniedHttpException('You are not allowed to view this timesheet');
         }
 
-        $view = new View($timesheet, 200);
+        $view = new View($data, 200);
         $view->getContext()->setGroups(['Default', 'Entity', 'Timesheet']);
 
         return $this->viewHandler->handle($view);
@@ -271,11 +282,13 @@ class TimesheetController extends BaseApiController
         $timesheet->setUser($this->getUser());
         $timesheet->setBegin($this->dateTime->createDateTime());
 
-        $form = $this->createForm(TimesheetEditForm::class, $timesheet, [
-            'csrf_protection' => false,
+        $mode = $this->getTrackingMode();
+
+        $form = $this->createForm(TimesheetApiEditForm::class, $timesheet, [
             'include_rate' => $this->isGranted('edit_rate', $timesheet),
             'include_exported' => $this->isGranted('edit_export', $timesheet),
-            'include_datetime' => !$this->configuration->isPunchInOut(),
+            'allow_begin_datetime' => $mode->canUpdateTimesWithAPI(),
+            'allow_end_datetime' => $mode->canUpdateTimesWithAPI(),
             'date_format' => self::DATE_FORMAT,
         ]);
 
@@ -349,11 +362,13 @@ class TimesheetController extends BaseApiController
             throw new AccessDeniedHttpException('You are not allowed to update this timesheet');
         }
 
-        $form = $this->createForm(TimesheetEditForm::class, $timesheet, [
-            'csrf_protection' => false,
+        $mode = $this->getTrackingMode();
+
+        $form = $this->createForm(TimesheetApiEditForm::class, $timesheet, [
             'include_rate' => $this->isGranted('edit_rate', $timesheet),
             'include_exported' => $this->isGranted('edit_export', $timesheet),
-            'include_datetime' => !$this->configuration->isPunchInOut(),
+            'allow_begin_datetime' => $mode->canUpdateTimesWithAPI(),
+            'allow_end_datetime' => $mode->canUpdateTimesWithAPI(),
             'date_format' => self::DATE_FORMAT,
         ]);
 

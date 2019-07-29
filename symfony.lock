@@ -324,6 +324,15 @@
     "phpstan/phpstan": {
         "version": "0.11.7"
     },
+    "phpstan/phpstan-doctrine": {
+        "version": "0.11.4"
+    },
+    "phpstan/phpstan-phpunit": {
+        "version": "0.11.2"
+    },
+    "phpstan/phpstan-symfony": {
+        "version": "0.11.6"
+    },
     "phpunit/php-code-coverage": {
         "version": "5.3.0"
     },
@@ -507,6 +516,9 @@
     "symfony/intl": {
         "version": "v4.0.3"
     },
+    "symfony/ldap": {
+        "version": "v4.2.8"
+    },
     "symfony/maker-bundle": {
         "version": "1.0",
         "recipe": {
@@ -579,6 +591,9 @@
             "ref": "cda8b550123383d25827705d05a42acf6819fe4e"
         }
     },
+    "symfony/security": {
+        "version": "v4.2.8"
+    },
     "symfony/security-bundle": {
         "version": "3.3",
         "recipe": {
@@ -588,17 +603,8 @@
             "ref": "85834af1496735f28d831489d12ab1921a875e0d"
         }
     },
-    "symfony/security-core": {
-        "version": "v4.2.6"
-    },
     "symfony/security-csrf": {
         "version": "v4.0.4"
-    },
-    "symfony/security-guard": {
-        "version": "v4.2.6"
-    },
-    "symfony/security-http": {
-        "version": "v4.2.6"
     },
     "symfony/serializer": {
         "version": "v4.1.2"
@@ -669,14 +675,23 @@
             "ref": "dae9b39fd6717970be7601101ce5aa960bf53d9a"
         }
     },
-    "symfony/webpack-encore-pack": {
+    "symfony/webpack-encore-bundle": {
         "version": "1.0",
         "recipe": {
             "repo": "github.com/symfony/recipes",
             "branch": "master",
             "version": "1.0",
-            "ref": "e18b0c550c3ee79142dc314b3e38193caafe4bb5"
-        }
+            "ref": "7b6180725839c090cd8dbd069a3947b0dca1bae0"
+        },
+        "files": [
+            "assets/css/app.css",
+            "assets/js/app.js",
+            "config/packages/assets.yaml",
+            "config/packages/prod/webpack_encore.yaml",
+            "config/packages/webpack_encore.yaml",
+            "package.json",
+            "webpack.config.js"
+        ]
     },
     "symfony/yaml": {
         "version": "v4.0.3"

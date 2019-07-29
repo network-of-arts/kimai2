@@ -9,14 +9,26 @@
 
 namespace App\Entity;
 
+use Doctrine\Common\Collections\ArrayCollection;
+use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Validator\Constraints as Assert;
 
 /**
- * @ORM\Table(name="kimai2_activities")
+ * @ORM\Table(name="kimai2_activities",
+ *     indexes={
+ *          @ORM\Index(columns={"visible","project_id"}),
+ *          @ORM\Index(columns={"visible","project_id","name"}),
+ *          @ORM\Index(columns={"visible","name"})
+ *     }
+ * )
  * @ORM\Entity(repositoryClass="App\Repository\ActivityRepository")
+ *
+ * columns={"visible","name"}               => IDX_8811FE1C7AB0E8595E237E06         => activity administration without filter
+ * columns={"visible","project_id"}         => IDX_8811FE1C7AB0E859166D1F9C         => activity administration with customer or project filter
+ * columns={"visible","project_id","name"}  => IDX_8811FE1C7AB0E859166D1F9C5E237E06 => activity drop-down for global activities in toolbar or globalsOnly filter in activity administration
  */
-class Activity
+class Activity implements EntityWithMetaFields
 {
     /**
      * @var int
@@ -28,9 +40,9 @@ class Activity
     private $id;
 
     /**
-     * @var Project
+     * @var Project|null
      *
-     * @ORM\ManyToOne(targetEntity="App\Entity\Project", inversedBy="activities")
+     * @ORM\ManyToOne(targetEntity="App\Entity\Project")
      * @ORM\JoinColumn(onDelete="CASCADE")
      */
     private $project;
@@ -59,107 +71,123 @@ class Activity
      */
     private $visible = true;
 
-    /**
-     * @var Timesheet[]
-     *
-     * @ORM\OneToMany(targetEntity="App\Entity\Timesheet", mappedBy="activity")
-     */
-    private $timesheets;
-
     // keep the trait include exactly here, for placing the column at the correct position
     use RatesTrait;
     use ColorTrait;
+    use BudgetTrait;
 
     /**
-     * @return int
+     * @var ActivityMeta[]|Collection
+     *
+     * @ORM\OneToMany(targetEntity="App\Entity\ActivityMeta", mappedBy="activity", cascade={"persist"})
      */
-    public function getId()
+    private $meta;
+
+    public function __construct()
+    {
+        $this->meta = new ArrayCollection();
+    }
+
+    public function getId(): ?int
     {
         return $this->id;
     }
 
-    /**
-     * @return Timesheet[]
-     */
-    public function getTimesheets(): array
-    {
-        return $this->timesheets;
-    }
-
-    /**
-     * @return Project
-     */
-    public function getProject()
+    public function getProject(): ?Project
     {
         return $this->project;
     }
 
-    /**
-     * @param Project $project
-     * @return Activity
-     */
-    public function setProject($project)
+    public function setProject(?Project $project): Activity
     {
         $this->project = $project;
 
         return $this;
     }
 
-    /**
-     * @param string $name
-     * @return Activity
-     */
-    public function setName($name)
+    public function setName(string $name): Activity
     {
         $this->name = $name;
 
         return $this;
     }
 
-    /**
-     * @return string
-     */
-    public function getName()
+    public function getName(): ?string
     {
         return $this->name;
     }
 
-    /**
-     * @param string $comment
-     * @return Activity
-     */
-    public function setComment($comment)
+    public function setComment(?string $comment): Activity
     {
         $this->comment = $comment;
 
         return $this;
     }
 
-    /**
-     * @return string
-     */
-    public function getComment()
+    public function getComment(): ?string
     {
         return $this->comment;
     }
 
-    /**
-     * @param bool $visible
-     * @return Activity
-     */
-    public function setVisible($visible)
+    public function setVisible(bool $visible): Activity
     {
         $this->visible = $visible;
 
         return $this;
     }
 
-    /**
-     * @return bool
-     */
-    public function getVisible()
+    public function getVisible(): bool
     {
         return $this->visible;
+    }
+
+    /**
+     * @internal only here for symfony forms
+     * @return Collection|MetaTableTypeInterface[]
+     */
+    public function getMetaFields(): Collection
+    {
+        return $this->meta;
+    }
+
+    /**
+     * @return MetaTableTypeInterface[]
+     */
+    public function getVisibleMetaFields(): array
+    {
+        $all = [];
+        foreach ($this->meta as $meta) {
+            if ($meta->isVisible()) {
+                $all[] = $meta;
+            }
+        }
+
+        return $all;
+    }
+
+    public function getMetaField(string $name): ?MetaTableTypeInterface
+    {
+        foreach ($this->meta as $field) {
+            if ($field->getName() === $name) {
+                return $field;
+            }
+        }
+
+        return null;
+    }
+
+    public function setMetaField(MetaTableTypeInterface $meta): EntityWithMetaFields
+    {
+        if (null === ($current = $this->getMetaField($meta->getName()))) {
+            $meta->setEntity($this);
+            $this->meta->add($meta);
+
+            return $this;
+        }
+
+        $current->merge($meta);
+
+        return $this;
     }
 
     /**

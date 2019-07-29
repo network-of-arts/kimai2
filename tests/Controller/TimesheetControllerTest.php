@@ -13,6 +13,7 @@ use App\Entity\Timesheet;
 use App\Entity\User;
 use App\Form\Type\DateRangeType;
 use App\Tests\DataFixtures\TimesheetFixtures;
+use App\Tests\Mocks\TimesheetTestMetaFieldSubscriberMock;
 
 /**
  * @group integration
@@ -38,7 +39,9 @@ class TimesheetControllerTest extends ControllerBaseTest
 
         foreach ($result as $item) {
             $this->assertContains('btn btn-default', $item->getAttribute('class'));
-            $this->assertEquals('i', $item->firstChild->tagName);
+            /** @var \DOMElement $domElement */
+            $domElement = $item->firstChild;
+            $this->assertEquals('i', $domElement->tagName);
         }
     }
 
@@ -142,6 +145,18 @@ class TimesheetControllerTest extends ControllerBaseTest
         $this->assertNull($timesheet->getFixedRate());
     }
 
+    public function testCreateActionShowsMetaFields()
+    {
+        $client = $this->getClientForAuthenticatedUser();
+        $client->getContainer()->get('event_dispatcher')->addSubscriber(new TimesheetTestMetaFieldSubscriberMock());
+        $this->request($client, '/timesheet/create');
+        $this->assertTrue($client->getResponse()->isSuccessful());
+
+        $form = $client->getCrawler()->filter('form[name=timesheet_edit_form]')->form();
+        $this->assertTrue($form->has('timesheet_edit_form[metaFields][0][value]'));
+        $this->assertFalse($form->has('timesheet_edit_form[metaFields][1][value]'));
+    }
+
     public function testCreateActionDoesNotShowRateFieldsForUser()
     {
         $client = $this->getClientForAuthenticatedUser();
@@ -187,10 +202,10 @@ class TimesheetControllerTest extends ControllerBaseTest
         $this->assertEquals($expected->format(\DateTime::ATOM), $timesheet->getEnd()->format(\DateTime::ATOM));
     }
 
-    public function testCreateActionWithBeginAndEndValues()
+    public function testCreateActionWithBeginAndEndAndTagValues()
     {
         $client = $this->getClientForAuthenticatedUser(User::ROLE_ADMIN);
-        $this->request($client, '/timesheet/create?begin=2018-08-02&end=2018-08-02');
+        $this->request($client, '/timesheet/create?begin=2018-08-02&end=2018-08-02&tags=one,two,three');
         $this->assertTrue($client->getResponse()->isSuccessful());
 
         $form = $client->getCrawler()->filter('form[name=timesheet_edit_form]')->form();
@@ -219,6 +234,8 @@ class TimesheetControllerTest extends ControllerBaseTest
 
         $expected = new \DateTime('2018-08-02T18:00:00');
         $this->assertEquals($expected->format(\DateTime::ATOM), $timesheet->getEnd()->format(\DateTime::ATOM));
+
+        $this->assertEquals(['one', 'two', 'three'], $timesheet->getTagsAsArray());
     }
 
     public function testEditAction()

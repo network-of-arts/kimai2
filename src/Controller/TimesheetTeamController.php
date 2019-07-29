@@ -13,6 +13,7 @@ use App\Entity\Timesheet;
 use App\Form\TimesheetAdminEditForm;
 use App\Repository\ActivityRepository;
 use App\Repository\ProjectRepository;
+use App\Repository\TagRepository;
 use Sensio\Bundle\FrameworkExtraBundle\Configuration\Security;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Routing\Annotation\Route;
@@ -28,7 +29,7 @@ class TimesheetTeamController extends TimesheetAbstractController
      * @Route(path="/page/{page}", requirements={"page": "[1-9]\d*"}, name="admin_timesheet_paginated", methods={"GET"})
      * @Security("is_granted('view_other_timesheet')")
      *
-     * @param $page
+     * @param int $page
      * @param Request $request
      * @return \Symfony\Component\HttpFoundation\Response
      */
@@ -70,17 +71,17 @@ class TimesheetTeamController extends TimesheetAbstractController
      * @param ActivityRepository $activityRepository
      * @return \Symfony\Component\HttpFoundation\RedirectResponse|\Symfony\Component\HttpFoundation\Response
      */
-    public function createAction(Request $request, ProjectRepository $projectRepository, ActivityRepository $activityRepository)
+    public function createAction(Request $request, ProjectRepository $projectRepository, ActivityRepository $activityRepository, TagRepository $tagRepository)
     {
-        return $this->create($request, 'timesheet-team/edit.html.twig', $projectRepository, $activityRepository);
+        return $this->create($request, 'timesheet-team/edit.html.twig', $projectRepository, $activityRepository, $tagRepository);
     }
 
-    protected function getCreateFormClassName()
+    protected function getCreateFormClassName(): string
     {
         return TimesheetAdminEditForm::class;
     }
 
-    protected function getEditFormClassName()
+    protected function getEditFormClassName(): string
     {
         return TimesheetAdminEditForm::class;
     }
@@ -103,5 +104,10 @@ class TimesheetTeamController extends TimesheetAbstractController
     protected function getCreateRoute(): string
     {
         return 'admin_timesheet_create';
+    }
+
+    protected function canSeeStartEndTime(): bool
+    {
+        return true;
     }
 }

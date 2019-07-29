@@ -10,12 +10,14 @@
 namespace App\Tests\Entity;
 
 use App\Entity\Customer;
-use App\Entity\Project;
+use App\Entity\CustomerMeta;
+use Doctrine\Common\Collections\Collection;
+use PHPUnit\Framework\TestCase;
 
 /**
  * @covers \App\Entity\Customer
  */
-class CustomerTest extends AbstractEntityTest
+class CustomerTest extends TestCase
 {
     public function testDefaultValues()
     {
@@ -24,7 +26,6 @@ class CustomerTest extends AbstractEntityTest
         $this->assertNull($sut->getName());
         $this->assertNull($sut->getNumber());
         $this->assertNull($sut->getComment());
-        // projects
         $this->assertTrue($sut->getVisible());
 
         $this->assertNull($sut->getCompany());
@@ -43,6 +44,11 @@ class CustomerTest extends AbstractEntityTest
         $this->assertNull($sut->getFixedRate());
         $this->assertNull($sut->getHourlyRate());
         $this->assertNull($sut->getColor());
+        $this->assertEquals(0.0, $sut->getBudget());
+        $this->assertEquals(0, $sut->getTimeBudget());
+        $this->assertInstanceOf(Collection::class, $sut->getMetaFields());
+        $this->assertEquals(0, $sut->getMetaFields()->count());
+        $this->assertNull($sut->getMetaField('foo'));
     }
 
     public function testSetterAndGetter()
@@ -60,10 +66,6 @@ class CustomerTest extends AbstractEntityTest
 
         $this->assertInstanceOf(Customer::class, $sut->setColor('#fffccc'));
         $this->assertEquals('#fffccc', $sut->getColor());
-
-        $projects = [(new Project())->setName('Test')];
-        $this->assertInstanceOf(Customer::class, $sut->setProjects($projects));
-        $this->assertSame($projects, $sut->getProjects());
 
         $this->assertInstanceOf(Customer::class, $sut->setCompany('test company'));
         $this->assertEquals('test company', $sut->getCompany());
@@ -88,7 +90,41 @@ class CustomerTest extends AbstractEntityTest
 
         $this->assertInstanceOf(Customer::class, $sut->setFixedRate(13.47));
         $this->assertEquals(13.47, $sut->getFixedRate());
+
         $this->assertInstanceOf(Customer::class, $sut->setHourlyRate(99));
         $this->assertEquals(99, $sut->getHourlyRate());
+
+        $this->assertInstanceOf(Customer::class, $sut->setBudget(12345.67));
+        $this->assertEquals(12345.67, $sut->getBudget());
+
+        $this->assertInstanceOf(Customer::class, $sut->setTimeBudget(937321));
+        $this->assertEquals(937321, $sut->getTimeBudget());
+    }
+
+    public function testMetaFields()
+    {
+        $sut = new Customer();
+        $meta = new CustomerMeta();
+        $meta->setName('foo')->setValue('bar')->setType('test');
+        $this->assertInstanceOf(Customer::class, $sut->setMetaField($meta));
+        self::assertEquals(1, $sut->getMetaFields()->count());
+        $result = $sut->getMetaField('foo');
+        self::assertSame($result, $meta);
+        self::assertEquals('test', $result->getType());
+
+        $meta2 = new CustomerMeta();
+        $meta2->setName('foo')->setValue('bar')->setType('test2');
+        $this->assertInstanceOf(Customer::class, $sut->setMetaField($meta2));
+        self::assertEquals(1, $sut->getMetaFields()->count());
+        self::assertCount(0, $sut->getVisibleMetaFields());
+
+        $result = $sut->getMetaField('foo');
+        self::assertSame($result, $meta);
+        self::assertEquals('test2', $result->getType());
+
+        $sut->setMetaField((new CustomerMeta())->setName('blub')->setIsVisible(true));
+        $sut->setMetaField((new CustomerMeta())->setName('blab')->setIsVisible(true));
+        self::assertEquals(3, $sut->getMetaFields()->count());
+        self::assertCount(2, $sut->getVisibleMetaFields());
     }
 }

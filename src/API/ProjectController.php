@@ -12,7 +12,7 @@ declare(strict_types=1);
 namespace App\API;
 
 use App\Entity\Project;
-use App\Form\ProjectEditForm;
+use App\Form\API\ProjectApiEditForm;
 use App\Repository\ProjectRepository;
 use App\Repository\Query\ProjectQuery;
 use FOS\RestBundle\Controller\Annotations as Rest;
@@ -37,16 +37,11 @@ class ProjectController extends BaseApiController
      * @var ProjectRepository
      */
     protected $repository;
-
     /**
      * @var ViewHandlerInterface
      */
     protected $viewHandler;
 
-    /**
-     * @param ViewHandlerInterface $viewHandler
-     * @param ProjectRepository $repository
-     */
     public function __construct(ViewHandlerInterface $viewHandler, ProjectRepository $repository)
     {
         $this->viewHandler = $viewHandler;
@@ -75,10 +70,6 @@ class ProjectController extends BaseApiController
     public function cgetAction(ParamFetcherInterface $paramFetcher)
     {
         $query = new ProjectQuery();
-        $query
-            ->setResultType(ProjectQuery::RESULT_TYPE_OBJECTS)
-            ->setOrderBy('name')
-        ;
 
         if (null !== ($order = $paramFetcher->get('order'))) {
             $query->setOrder($order);
@@ -96,7 +87,7 @@ class ProjectController extends BaseApiController
             $query->setVisibility($visible);
         }
 
-        $data = $this->repository->findByQuery($query);
+        $data = $this->repository->getProjectsForQuery($query);
         $view = new View($data, 200);
         $view->getContext()->setGroups(['Default', 'Collection', 'Project']);
 
@@ -117,10 +108,13 @@ class ProjectController extends BaseApiController
      */
     public function getAction($id)
     {
+        /** @var Project $data */
         $data = $this->repository->find($id);
+
         if (null === $data) {
             throw new NotFoundException();
         }
+
         $view = new View($data, 200);
         $view->getContext()->setGroups(['Default', 'Entity', 'Project']);
 
@@ -159,9 +153,7 @@ class ProjectController extends BaseApiController
 
         $project = new Project();
 
-        $form = $this->createForm(ProjectEditForm::class, $project, [
-            'csrf_protection' => false,
-        ]);
+        $form = $this->createForm(ProjectApiEditForm::class, $project);
 
         $form->submit($request->request->all());
 
@@ -223,9 +215,7 @@ class ProjectController extends BaseApiController
             throw new AccessDeniedHttpException('User cannot update project');
         }
 
-        $form = $this->createForm(ProjectEditForm::class, $project, [
-            'csrf_protection' => false,
-        ]);
+        $form = $this->createForm(ProjectApiEditForm::class, $project);
 
         $form->setData($project);
         $form->submit($request->request->all(), false);

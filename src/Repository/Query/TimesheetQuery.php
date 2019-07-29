@@ -26,21 +26,11 @@ class TimesheetQuery extends ActivityQuery
     public const STATE_NOT_EXPORTED = 5;
 
     /**
-     * Overwritten for different default order
-     * @var string
-     */
-    protected $order = self::ORDER_DESC;
-    /**
-     * Overwritten for different default order
-     * @var string
-     */
-    protected $orderBy = 'begin';
-    /**
-     * @var User
+     * @var User|null
      */
     protected $user;
     /**
-     * @var Activity
+     * @var Activity|null
      */
     protected $activity;
     /**
@@ -58,15 +48,18 @@ class TimesheetQuery extends ActivityQuery
     /**
      * @var iterable
      */
-    protected $tags;
+    protected $tags = [];
 
     public function __construct()
     {
+        parent::__construct();
+        $this->setOrder(self::ORDER_DESC);
+        $this->setOrderBy('begin');
         $this->dateRange = new DateRange();
     }
 
     /**
-     * @return User
+     * @return User|null
      */
     public function getUser()
     {
@@ -74,7 +67,7 @@ class TimesheetQuery extends ActivityQuery
     }
 
     /**
-     * @param User|int $user
+     * @param User|int|null $user
      * @return TimesheetQuery
      */
     public function setUser($user = null)
@@ -87,7 +80,7 @@ class TimesheetQuery extends ActivityQuery
     /**
      * Activity overwrites: setProject() and setCustomer()
      *
-     * @return Activity
+     * @return Activity|null
      */
     public function getActivity()
     {
@@ -95,7 +88,7 @@ class TimesheetQuery extends ActivityQuery
     }
 
     /**
-     * @param Activity|int $activity
+     * @param Activity|int|null $activity
      * @return TimesheetQuery
      */
     public function setActivity($activity = null)
@@ -244,5 +237,41 @@ class TimesheetQuery extends ActivityQuery
         $this->tags = $tags;
 
         return $this;
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+    public function isDirty(): bool
+    {
+        if (parent::isDirty()) {
+            return true;
+        }
+
+        if ($this->activity !== null) {
+            return true;
+        }
+
+        if (!empty($this->tags)) {
+            return true;
+        }
+
+        if ($this->user !== null) {
+            return true;
+        }
+
+        if ($this->state !== self::STATE_ALL) {
+            return true;
+        }
+
+        if ($this->exported !== self::STATE_ALL) {
+            return true;
+        }
+
+        if ($this->dateRange->getBegin() !== null || $this->dateRange->getEnd() !== null) {
+            return true;
+        }
+
+        return false;
     }
 }

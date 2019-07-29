@@ -9,11 +9,14 @@
 
 namespace App\Tests\Controller;
 
+use App\Entity\Project;
 use App\Entity\Timesheet;
 use App\Entity\User;
 use App\Tests\DataFixtures\CustomerFixtures;
 use App\Tests\DataFixtures\ProjectFixtures;
 use App\Tests\DataFixtures\TimesheetFixtures;
+use App\Tests\Mocks\ProjectTestMetaFieldSubscriberMock;
+use Doctrine\ORM\EntityManager;
 
 /**
  * @group integration
@@ -33,13 +36,30 @@ class ProjectControllerTest extends ControllerBaseTest
         $this->assertHasDataTable($client);
     }
 
+    public function testBudgetAction()
+    {
+        $client = $this->getClientForAuthenticatedUser(User::ROLE_ADMIN);
+        /** @var EntityManager $em */
+        $em = $client->getContainer()->get('doctrine.orm.entity_manager');
+
+        $fixture = new TimesheetFixtures();
+        $fixture->setAmount(10);
+        $fixture->setProjects($em->getRepository(Project::class)->findAll());
+        $fixture->setUser($this->getUserByRole($em, User::ROLE_ADMIN));
+        $this->importFixture($em, $fixture);
+
+        $client = $this->getClientForAuthenticatedUser(User::ROLE_ADMIN);
+        $this->assertAccessIsGranted($client, '/admin/project/1/budget');
+        self::assertHasProgressbar($client);
+    }
+
     public function testCreateAction()
     {
         $client = $this->getClientForAuthenticatedUser(User::ROLE_ADMIN);
         $this->assertAccessIsGranted($client, '/admin/project/create');
         $form = $client->getCrawler()->filter('form[name=project_edit_form]')->form();
         $this->assertTrue($form->has('project_edit_form[create_more]'));
-        $this->assertNull($form->get('project_edit_form[create_more]')->getValue());
+        $this->assertFalse($form->get('project_edit_form[create_more]')->hasValue());
         $client->submit($form, [
             'project_edit_form' => [
                 'name' => 'Test 2',
@@ -49,6 +69,18 @@ class ProjectControllerTest extends ControllerBaseTest
         $client->followRedirect();
         $this->assertHasDataTable($client);
         $this->assertHasFlashSuccess($client);
+    }
+
+    public function testCreateActionShowsMetaFields()
+    {
+        $client = $this->getClientForAuthenticatedUser(User::ROLE_ADMIN);
+        $client->getContainer()->get('event_dispatcher')->addSubscriber(new ProjectTestMetaFieldSubscriberMock());
+        $this->assertAccessIsGranted($client, '/admin/project/create');
+        $this->assertTrue($client->getResponse()->isSuccessful());
+
+        $form = $client->getCrawler()->filter('form[name=project_edit_form]')->form();
+        $this->assertTrue($form->has('project_edit_form[metaFields][0][value]'));
+        $this->assertFalse($form->has('project_edit_form[metaFields][1][value]'));
     }
 
     public function testCreateActionWithCreateMore()
@@ -80,6 +112,7 @@ class ProjectControllerTest extends ControllerBaseTest
         $this->assertTrue($client->getResponse()->isSuccessful());
         $form = $client->getCrawler()->filter('form[name=project_edit_form]')->form();
         $this->assertTrue($form->has('project_edit_form[create_more]'));
+        $this->assertTrue($form->get('project_edit_form[create_more]')->hasValue());
         $this->assertEquals(1, $form->get('project_edit_form[create_more]')->getValue());
         $this->assertEquals($selectedCustomer, $form->get('project_edit_form[customer]')->getValue());
     }

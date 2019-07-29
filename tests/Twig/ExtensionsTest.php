@@ -50,7 +50,7 @@ class ExtensionsTest extends TestCase
 
     public function testGetFilters()
     {
-        $filters = ['duration', 'money', 'currency', 'country', 'icon', 'docu_link'];
+        $filters = ['duration', 'money', 'currency', 'country', 'docu_link'];
         $sut = $this->getSut($this->localeDe);
         $twigFilters = $sut->getFilters();
         $this->assertCount(count($filters), $twigFilters);
@@ -196,7 +196,8 @@ class ExtensionsTest extends TestCase
         $this->assertEquals('00:00 h', $sut->duration('0'));
 
         $sut = $this->getSut($this->localeEn, 'en');
-        $this->assertNull($sut->duration(null));
+
+        $this->assertEquals('00:00 h', $sut->duration(null));
     }
 
     protected function getTimesheet($seconds)
@@ -212,28 +213,6 @@ class ExtensionsTest extends TestCase
         return $record;
     }
 
-    public function testIcon()
-    {
-        $icons = [
-            'user', 'customer', 'project', 'activity', 'admin', 'invoice', 'timesheet', 'dashboard', 'logout', 'trash',
-            'delete', 'repeat', 'edit', 'manual', 'help', 'start', 'start-small', 'stop', 'stop-small', 'filter',
-            'create', 'list', 'print', 'visibility', 'calendar', 'money', 'duration', 'download', 'copy', 'settings',
-            'export', 'pdf', 'csv', 'ods', 'xlsx', 'on', 'off', 'audit', 'home', 'shop', 'about', 'debug', 'profile-stats'
-        ];
-
-        // test pre-defined icons
-        $sut = $this->getSut($this->localeEn);
-        foreach ($icons as $icon) {
-            $result = $sut->icon($icon);
-            $this->assertNotEmpty($result, 'Problem with icon definition: ' . $icon);
-            $this->assertIsString($result);
-        }
-
-        // test fallback will be returned
-        $this->assertEquals('', $sut->icon('foo'));
-        $this->assertEquals('bar', $sut->icon('foo', 'bar'));
-    }
-
     public function testDocuLink()
     {
         $data = [
@@ -241,7 +220,6 @@ class ExtensionsTest extends TestCase
             'timesheet.html#duration-format' => 'https://www.kimai.org/documentation/timesheet.html#duration-format',
             'invoice.html' => 'https://www.kimai.org/documentation/invoice.html',
             '' => 'https://www.kimai.org/documentation/',
-            null => 'https://www.kimai.org/documentation/',
         ];
 
         $sut = $this->getSut($this->localeEn);

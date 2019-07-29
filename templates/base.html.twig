@@ -42,11 +42,19 @@
 {% block page_subtitle %}{% endblock %}
 
 {% block logo_mini %}
-    <b>K</b>TT
+    {% if not kimai_context.branding.mini is empty %}
+        {{ kimai_context.branding.mini|raw }}
+    {% else %}
+        <b>K</b>TT
+    {% endif %}
 {% endblock %}
 
 {% block logo_large %}
-    <b>Kimai</b> - Time Tracking
+    {% if not kimai_context.branding.company is empty %}
+        {{ kimai_context.branding.company|raw }}
+    {% else %}
+        <b>Kimai</b> - Time Tracking
+    {% endif %}
 {% endblock %}
 
 {% block footer %}
@@ -109,10 +117,11 @@
     {% import "macros/widgets.html.twig" as widgets %}
     <li class="dropdown user-menu">
         <a href="#" class="dropdown-toggle ddt-large" data-toggle="dropdown">
-            <i class="{{ 'user'|icon }} fa-2x"></i>
+            <i class="{{ 'avatar'|icon }} fa-2x"></i>
         </a>
         <ul class="dropdown-menu">
             {% if app.user is not null %}
+                {% if is_granted('view', app.user) %}
                 <li>
                     <a href="{{ path('user_profile', {'username' : app.user.username}) }}">
                         <h4 class="control-sidebar-subheading">
@@ -121,6 +130,8 @@
                         </h4>
                     </a>
                 </li>
+                {% endif %}
+                {% if is_granted('edit', app.user) %}
                 <li>
                     <a href="{{ path('user_profile_edit', {'username' : app.user.username}) }}">
                         <h4 class="control-sidebar-subheading">
@@ -129,6 +140,8 @@
                         </h4>
                     </a>
                 </li>
+                {% endif %}
+                {% if is_granted('preferences', app.user) %}
                 <li>
                     <a href="{{ path('user_profile_preferences', {'username' : app.user.username})  }}">
                         <h4 class="control-sidebar-subheading">
@@ -137,6 +150,7 @@
                         </h4>
                     </a>
                 </li>
+                {% endif %}
                 <li>
                     <a href="{{ path('fos_user_security_logout') }}">
                         <h4 class="control-sidebar-subheading">
@@ -167,14 +181,14 @@
 
 {% block stylesheets %}
     {# we do not call parent() as we use a custom built for the frontend assets and don't want the default <stylesheet> #}
-    <link rel="stylesheet" href="{{ asset('build/app.css') }}">
+    {{ encore_entry_link_tags('app') }}
     {% set event = trigger(constant('App\\Event\\ThemeEvent::STYLESHEET')) %}
     {{ event.content|raw }}
 {% endblock %}
 
 {% block head %}
     {{ parent() }}
-    <script src="{{ asset('build/app.js') }}"></script>
+    {{ encore_entry_script_tags('app') }}
     {% include 'partials/head.html.twig' %}
     {% set event = trigger(constant('App\\Event\\ThemeEvent::HTML_HEAD')) %}
     {{ event.content|raw }}

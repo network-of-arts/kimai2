@@ -10,16 +10,14 @@
 namespace App\Form;
 
 use App\Entity\Activity;
-use App\Form\Type\ColorPickerType;
+use App\Entity\Customer;
 use App\Form\Type\CustomerType;
-use App\Form\Type\FixedRateType;
-use App\Form\Type\HourlyRateType;
 use App\Form\Type\ProjectType;
-use App\Form\Type\YesNoType;
 use App\Repository\CustomerRepository;
 use App\Repository\ProjectRepository;
+use App\Repository\Query\CustomerFormTypeQuery;
+use App\Repository\Query\ProjectFormTypeQuery;
 use Symfony\Component\Form\AbstractType;
-use Symfony\Component\Form\Extension\Core\Type\CheckboxType;
 use Symfony\Component\Form\Extension\Core\Type\TextareaType;
 use Symfony\Component\Form\Extension\Core\Type\TextType;
 use Symfony\Component\Form\FormBuilderInterface;
@@ -27,11 +25,10 @@ use Symfony\Component\Form\FormEvent;
 use Symfony\Component\Form\FormEvents;
 use Symfony\Component\OptionsResolver\OptionsResolver;
 
-/**
- * Defines the form used to manipulate Activities.
- */
 class ActivityEditForm extends AbstractType
 {
+    use EntityFormTrait;
+
     /**
      * {@inheritdoc}
      */
@@ -39,7 +36,6 @@ class ActivityEditForm extends AbstractType
     {
         $project = null;
         $customer = null;
-        $currency = false;
         $id = null;
 
         if (isset($options['data'])) {
@@ -49,21 +45,19 @@ class ActivityEditForm extends AbstractType
             if (null !== $entry->getProject()) {
                 $project = $entry->getProject();
                 $customer = $project->getCustomer();
-                $currency = $customer->getCurrency();
+                $options['currency'] = $customer->getCurrency();
             }
 
             $id = $entry->getId();
         }
 
         $builder
-            // string - length 255
             ->add('name', TextType::class, [
                 'label' => 'label.name',
                 'attr' => [
                     'autofocus' => 'autofocus'
                 ],
             ])
-            // text
             ->add('comment', TextareaType::class, [
                 'label' => 'label.comment',
                 'required' => false,
@@ -74,7 +68,7 @@ class ActivityEditForm extends AbstractType
             $builder
                 ->add('customer', CustomerType::class, [
                     'query_builder' => function (CustomerRepository $repo) use ($customer) {
-                        return $repo->builderForEntityType($customer);
+                        return $repo->getQueryBuilderForFormType(new CustomerFormTypeQuery($customer));
                     },
                     'data' => $customer ? $customer : null,
                     'required' => false,
@@ -87,7 +81,7 @@ class ActivityEditForm extends AbstractType
             ->add('project', ProjectType::class, [
                 'required' => false,
                 'query_builder' => function (ProjectRepository $repo) use ($project, $customer) {
-                    return $repo->builderForEntityType($project, $customer);
+                    return $repo->getQueryBuilderForFormType(new ProjectFormTypeQuery($project, $customer));
                 },
             ]);
 
@@ -103,32 +97,16 @@ class ActivityEditForm extends AbstractType
                 $event->getForm()->add('project', ProjectType::class, [
                     'group_by' => null,
                     'query_builder' => function (ProjectRepository $repo) use ($data, $project) {
-                        return $repo->builderForEntityType($project, $data['customer']);
+                        return $repo->getQueryBuilderForFormType(new ProjectFormTypeQuery($project, $data['customer']));
                     },
                 ]);
             }
         );
 
-        $builder
-            ->add('color', ColorPickerType::class)
-            ->add('fixedRate', FixedRateType::class, [
-                'currency' => $currency,
-            ])
-            ->add('hourlyRate', HourlyRateType::class, [
-                'currency' => $currency,
-            ])
-            // boolean
-            ->add('visible', YesNoType::class, [
-                'label' => 'label.visible',
-            ])
-        ;
+        $this->addCommonFields($builder, $options);
 
         if (null === $id && $options['create_more']) {
-            $builder->add('create_more', CheckboxType::class, [
-                'label' => 'label.create_more',
-                'required' => false,
-                'mapped' => false,
-            ]);
+            $this->addCreateMore($builder);
         }
     }
 
@@ -144,6 +122,8 @@ class ActivityEditForm extends AbstractType
             'csrf_token_id' => 'admin_activity_edit',
             'create_more' => false,
             'customer' => false,
+            'currency' => Customer::DEFAULT_CURRENCY,
+            'include_budget' => false,
             'attr' => [
                 'data-form-event' => 'kimai.activityUpdate'
             ],

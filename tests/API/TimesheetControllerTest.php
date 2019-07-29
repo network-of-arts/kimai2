@@ -15,6 +15,8 @@ use App\Entity\Project;
 use App\Entity\Timesheet;
 use App\Entity\User;
 use App\Tests\DataFixtures\TimesheetFixtures;
+use App\Tests\Mocks\Security\UserDateTimeFactoryFactory;
+use App\Timesheet\UserDateTimeFactory;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
@@ -24,10 +26,17 @@ class TimesheetControllerTest extends APIControllerBaseTest
 {
     public const DATE_FORMAT = 'Y-m-d H:i:s';
     public const DATE_FORMAT_HTML5 = 'Y-m-d\TH:i:s';
+    public const TEST_TIMEZONE = 'Europe/London';
+
+    /**
+     * @var UserDateTimeFactory
+     */
+    protected $dateTime;
 
     public function setUp()
     {
         $this->importFixtureForUser(User::ROLE_USER);
+        $this->dateTime = (new UserDateTimeFactoryFactory($this))->create(self::TEST_TIMEZONE);
     }
 
     protected function importFixtureForUser(string $role)
@@ -278,8 +287,8 @@ class TimesheetControllerTest extends APIControllerBaseTest
         $data = [
             'activity' => 1,
             'project' => 1,
-            'begin' => (new \DateTime('- 8 hours'))->format('Y-m-d H:m'),
-            'end' => (new \DateTime())->format('Y-m-d H:m'),
+            'begin' => ($this->dateTime->createDateTime('- 16 hours'))->format('Y-m-d H:m:0'),
+            'end' => ($this->dateTime->createDateTime())->format('Y-m-d H:m:0'),
             'description' => 'foo',
             'fixedRate' => 2016,
             'hourlyRate' => 127
@@ -291,18 +300,18 @@ class TimesheetControllerTest extends APIControllerBaseTest
         $this->assertIsArray($result);
         $this->assertDefaultStructure($result);
         $this->assertNotEmpty($result['id']);
-        $this->assertEquals(28800, $result['duration']);
+        $this->assertTrue($result['duration'] == 57600 || $result['duration'] == 57660); // 1 minute rounding might be applied
         $this->assertEquals(2016, $result['rate']);
     }
 
     // check for project, as this is a required field. It will not be included in the select, as it is
     // already filtered within the repository due to the hidden customer
-    public function testPostActionWithInvisibleProject()
+    public function testPostActionWithInvisibleProjectIsAccepted()
     {
         $client = $this->getClientForAuthenticatedUser(User::ROLE_USER);
 
         $em = $client->getContainer()->get('doctrine.orm.entity_manager');
-        $customer = (new Customer())->setName('foo-bar-1')->setVisible(false)->setCountry('DE')->setTimezone('Euopre/Berlin');
+        $customer = (new Customer())->setName('foo-bar-1')->setVisible(false)->setCountry('DE')->setTimezone('Europe/Berlin');
         $em->persist($customer);
         $project = (new Project())->setName('foo-bar-2')->setVisible(true)->setCustomer($customer);
         $em->persist($project);
@@ -330,7 +339,7 @@ class TimesheetControllerTest extends APIControllerBaseTest
         $client = $this->getClientForAuthenticatedUser(User::ROLE_USER);
 
         $em = $client->getContainer()->get('doctrine.orm.entity_manager');
-        $customer = (new Customer())->setName('foo-bar-1')->setVisible(true)->setCountry('DE')->setTimezone('Euopre/Berlin');
+        $customer = (new Customer())->setName('foo-bar-1')->setVisible(true)->setCountry('DE')->setTimezone('Europe/Berlin');
         $em->persist($customer);
         $project = (new Project())->setName('foo-bar-2')->setVisible(true)->setCustomer($customer);
         $em->persist($project);
@@ -357,8 +366,8 @@ class TimesheetControllerTest extends APIControllerBaseTest
         $data = [
             'activity' => 1,
             'project' => 1,
-            'begin' => (new \DateTime('- 7 hours'))->format('Y-m-d\TH:m'),
-            'end' => (new \DateTime())->format('Y-m-d\TH:m'),
+            'begin' => ($this->dateTime->createDateTime('- 7 hours'))->format('Y-m-d\TH:m:0'),
+            'end' => ($this->dateTime->createDateTime())->format('Y-m-d\TH:m:0'),
             'description' => 'foo',
             'exported' => true,
         ];
@@ -668,7 +677,7 @@ class TimesheetControllerTest extends APIControllerBaseTest
         $this->assertEquals(10, count($result));
         $this->assertDefaultStructure($result[0], false);
 
-        $query = ['tags' => 'Nothing'];
+        $query = ['tags' => 'Nothing-2-see,here'];
         $this->assertAccessIsGranted($client, '/api/timesheets', 'GET', $query);
         $result = json_decode($client->getResponse()->getContent(), true);
 
@@ -810,7 +819,7 @@ class TimesheetControllerTest extends APIControllerBaseTest
     protected function assertDefaultStructure(array $result, $full = true)
     {
         $expectedKeys = [
-            'id', 'begin', 'end', 'duration', 'description', 'rate', 'activity', 'project', 'tags', 'user'
+            'id', 'begin', 'end', 'duration', 'description', 'rate', 'activity', 'project', 'tags', 'user', 'metaFields'
         ];
 
         if ($full) {

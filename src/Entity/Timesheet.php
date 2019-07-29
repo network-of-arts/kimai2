@@ -10,6 +10,7 @@
 namespace App\Entity;
 
 use Doctrine\Common\Collections\ArrayCollection;
+use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Validator\Constraints as Assert;
 
@@ -17,14 +18,25 @@ use Symfony\Component\Validator\Constraints as Assert;
  * @ORM\Table(name="kimai2_timesheet",
  *     indexes={
  *          @ORM\Index(columns={"user"}),
- *          @ORM\Index(columns={"activity_id"})
+ *          @ORM\Index(columns={"activity_id"}),
+ *          @ORM\Index(columns={"user","start_time"}),
+ *          @ORM\Index(columns={"start_time"}),
+ *          @ORM\Index(columns={"start_time","end_time"}),
+ *          @ORM\Index(columns={"start_time","end_time","user"}),
  *     }
  * )
  * @ORM\Entity(repositoryClass="App\Repository\TimesheetRepository")
  * @ORM\HasLifecycleCallbacks()
  * @App\Validator\Constraints\Timesheet
+ *
+ * columns={"user"}                         => IDX_4F60C6B18D93D649                 => count results for user timesheets
+ * columns={"activity_id"}                  => IDX_4F60C6B181C06096                 => ???
+ * columns={"user","start_time"}            => IDX_4F60C6B18D93D649502DF587         => recent activities, user timesheet with date filzer
+ * columns={"start_time"}                   => IDX_4F60C6B1502DF587                 => team timesheets with timerange filter only
+ * columns={"start_time","end_time"}        => IDX_4F60C6B1502DF58741561401         => ???
+ * columns={"start_time","end_time","user"} => IDX_4F60C6B1502DF587415614018D93D649 => ???
  */
-class Timesheet
+class Timesheet implements EntityWithMetaFields
 {
     /**
      * @var int
@@ -82,7 +94,7 @@ class Timesheet
     /**
      * @var Activity
      *
-     * @ORM\ManyToOne(targetEntity="App\Entity\Activity", inversedBy="timesheets")
+     * @ORM\ManyToOne(targetEntity="App\Entity\Activity")
      * @ORM\JoinColumn(onDelete="CASCADE", nullable=false)
      * @Assert\NotNull()
      */
@@ -91,7 +103,7 @@ class Timesheet
     /**
      * @var Project
      *
-     * @ORM\ManyToOne(targetEntity="App\Entity\Project", inversedBy="timesheets")
+     * @ORM\ManyToOne(targetEntity="App\Entity\Project")
      * @ORM\JoinColumn(onDelete="CASCADE", nullable=false)
      * @Assert\NotNull()
      */
@@ -124,7 +136,7 @@ class Timesheet
     private $exported = false;
 
     /**
-     * @var \App\Entity\Tag[]
+     * @var Tag[]|ArrayCollection
      *
      * @ORM\ManyToMany(targetEntity="Tag", inversedBy="timesheets", cascade={"persist"})
      * @ORM\JoinTable(
@@ -137,7 +149,14 @@ class Timesheet
      *  }
      * )
      */
-    protected $tags;
+    private $tags;
+
+    /**
+     * @var TimesheetMeta[]|Collection
+     *
+     * @ORM\OneToMany(targetEntity="App\Entity\TimesheetMeta", mappedBy="timesheet", cascade={"persist"})
+     */
+    private $meta;
 
     /**
      * Default constructor, initializes collections
@@ -145,14 +164,15 @@ class Timesheet
     public function __construct()
     {
         $this->tags = new ArrayCollection();
+        $this->meta = new ArrayCollection();
     }
 
     /**
-     * Get entry id
+     * Get entry id, returns null for new entities which were not persisted.
      *
-     * @return int
+     * @return int|null
      */
-    public function getId()
+    public function getId(): ?int
     {
         return $this->id;
     }
@@ -178,10 +198,7 @@ class Timesheet
         $this->localized = true;
     }
 
-    /**
-     * @return \DateTime
-     */
-    public function getBegin()
+    public function getBegin(): ?\DateTime
     {
         $this->localizeDates();
 
@@ -192,7 +209,7 @@ class Timesheet
      * @param \DateTime $begin
      * @return Timesheet
      */
-    public function setBegin(\DateTime $begin)
+    public function setBegin(\DateTime $begin): Timesheet
     {
         $this->begin = $begin;
         $this->timezone = $begin->getTimezone()->getName();
@@ -200,10 +217,7 @@ class Timesheet
         return $this;
     }
 
-    /**
-     * @return \DateTime
-     */
-    public function getEnd()
+    public function getEnd(): ?\DateTime
     {
         $this->localizeDates();
 
@@ -214,7 +228,7 @@ class Timesheet
      * @param \DateTime $end
      * @return Timesheet
      */
-    public function setEnd(?\DateTime $end)
+    public function setEnd(?\DateTime $end): Timesheet
     {
         $this->end = $end;
 
@@ -232,7 +246,7 @@ class Timesheet
      * @param int $duration
      * @return Timesheet
      */
-    public function setDuration($duration)
+    public function setDuration($duration): Timesheet
     {
         $this->duration = $duration;
 
@@ -253,17 +267,14 @@ class Timesheet
      * @param User $user
      * @return Timesheet
      */
-    public function setUser(User $user)
+    public function setUser(User $user): Timesheet
     {
         $this->user = $user;
 
         return $this;
     }
 
-    /**
-     * @return User
-     */
-    public function getUser()
+    public function getUser(): ?User
     {
         return $this->user;
     }
@@ -272,25 +283,19 @@ class Timesheet
      * @param Activity $activity
      * @return Timesheet
      */
-    public function setActivity($activity)
+    public function setActivity($activity): Timesheet
     {
         $this->activity = $activity;
 
         return $this;
     }
 
-    /**
-     * @return Activity
-     */
-    public function getActivity()
+    public function getActivity(): ?Activity
     {
         return $this->activity;
     }
 
-    /**
-     * @return Project
-     */
-    public function getProject()
+    public function getProject(): ?Project
     {
         return $this->project;
     }
@@ -299,7 +304,7 @@ class Timesheet
      * @param Project $project
      * @return Timesheet
      */
-    public function setProject(Project $project)
+    public function setProject(Project $project): Timesheet
     {
         $this->project = $project;
 
@@ -310,17 +315,14 @@ class Timesheet
      * @param string $description
      * @return Timesheet
      */
-    public function setDescription($description)
+    public function setDescription($description): Timesheet
     {
         $this->description = $description;
 
         return $this;
     }
 
-    /**
-     * @return string
-     */
-    public function getDescription()
+    public function getDescription(): ?string
     {
         return $this->description;
     }
@@ -329,7 +331,7 @@ class Timesheet
      * @param float $rate
      * @return Timesheet
      */
-    public function setRate($rate)
+    public function setRate($rate): Timesheet
     {
         $this->rate = $rate;
 
@@ -348,7 +350,7 @@ class Timesheet
      * @param Tag $tag
      * @return Timesheet
      */
-    public function addTag(Tag $tag)
+    public function addTag(Tag $tag): Timesheet
     {
         if ($this->tags->contains($tag)) {
             return $this;
@@ -372,9 +374,9 @@ class Timesheet
     }
 
     /**
-     * @return Tag[]|ArrayCollection
+     * @return Collection<Tag>
      */
-    public function getTags()
+    public function getTags(): Collection
     {
         return $this->tags;
     }
@@ -404,7 +406,7 @@ class Timesheet
      * @param bool $exported
      * @return Timesheet
      */
-    public function setExported(bool $exported)
+    public function setExported(bool $exported): Timesheet
     {
         $this->exported = $exported;
 
@@ -422,13 +424,63 @@ class Timesheet
     /**
      * BE WARNED: this method should NOT be used programmatically, there is very likely no reason for it!
      *
+     * @internal
      * @deprecated since it was introduced, only meant for the initial migration. Will be removed with 1.0.
      * @param string $timezone
      * @return Timesheet
      */
-    public function setTimezone(string $timezone)
+    public function setTimezone(string $timezone): Timesheet
     {
         $this->timezone = $timezone;
+
+        return $this;
+    }
+
+    /**
+     * @internal only here for symfony forms
+     * @return Collection|MetaTableTypeInterface[]
+     */
+    public function getMetaFields(): Collection
+    {
+        return $this->meta;
+    }
+
+    /**
+     * @return MetaTableTypeInterface[]
+     */
+    public function getVisibleMetaFields(): array
+    {
+        $all = [];
+        foreach ($this->meta as $meta) {
+            if ($meta->isVisible()) {
+                $all[] = $meta;
+            }
+        }
+
+        return $all;
+    }
+
+    public function getMetaField(string $name): ?MetaTableTypeInterface
+    {
+        foreach ($this->meta as $field) {
+            if ($field->getName() === $name) {
+                return $field;
+            }
+        }
+
+        return null;
+    }
+
+    public function setMetaField(MetaTableTypeInterface $meta): EntityWithMetaFields
+    {
+        if (null === ($current = $this->getMetaField($meta->getName()))) {
+            $meta->setEntity($this);
+            $this->meta->add($meta);
+
+            return $this;
+        }
+
+        $current->merge($meta);
 
         return $this;
     }

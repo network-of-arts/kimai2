@@ -53,12 +53,48 @@ abstract class AbstractMigration extends BaseAbstractMigration implements Contai
     }
 
     /**
+     * Whether we should deactivate foreign key support for SQLite.
+     * This is required, if columns are changed.
+     * SQLite will drop the table and therefor all referenced data if we don't deactivate this.
+     *
+     * @return bool
+     */
+    protected function isSupportingForeignKeys(): bool
+    {
+        return true;
+    }
+
+    protected function deactivateForeignKeysOnSqlite()
+    {
+        if ($this->isPlatformSqlite() && !$this->isSupportingForeignKeys()) {
+            $this->addSql('PRAGMA foreign_keys = OFF;');
+        }
+    }
+
+    private function activateForeignKeysOnSqlite()
+    {
+        if ($this->isPlatformSqlite() && !$this->isSupportingForeignKeys()) {
+            $this->addSql('PRAGMA foreign_keys = ON;');
+        }
+    }
+
+    /**
      * @param Schema $schema
      * @throws DBALException
      */
     public function preUp(Schema $schema): void
     {
         $this->abortIfPlatformNotSupported();
+        $this->deactivateForeignKeysOnSqlite();
+    }
+
+    /**
+     * @param Schema $schema
+     * @throws DBALException
+     */
+    public function postUp(Schema $schema): void
+    {
+        $this->activateForeignKeysOnSqlite();
     }
 
     /**
@@ -68,6 +104,16 @@ abstract class AbstractMigration extends BaseAbstractMigration implements Contai
     public function preDown(Schema $schema): void
     {
         $this->abortIfPlatformNotSupported();
+        $this->deactivateForeignKeysOnSqlite();
+    }
+
+    /**
+     * @param Schema $schema
+     * @throws DBALException
+     */
+    public function postDown(Schema $schema): void
+    {
+        $this->activateForeignKeysOnSqlite();
     }
 
     /**

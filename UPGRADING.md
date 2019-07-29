@@ -1,47 +1,51 @@
 # Upgrading Kimai 2
 
-_Database upgrades are currently ONLY provided for MySQL/MariaDB and SQLite._ 
+_Make sure to create a backup before you start!_ 
 
-Upgrading to the latest available version can be achieved with these commands: 
+Read the [updates documentation](https://www.kimai.org/documentation/updates.html) to find out how 
+you can upgrade your Kimai installation to the latest stable release.
 
-```bash
-git fetch --tags
-git checkout 0.8
-sudo -u www-data composer install --no-dev --optimize-autoloader
-sudo -u www-data bin/console cache:clear --env=prod
-sudo -u www-data bin/console cache:warmup --env=prod
-bin/console doctrine:migrations:migrate
-```
+**Before you leave ...**
 
-There might be more steps required which are version specific and need to be executed after following the above list of commands.
-Read and follow each version info below, otherwise you risk data inconsistency or a broken installation!
+There might be more steps required which are version specific and need to be executed after [the update](https://www.kimai.org/documentation/updates.html).
+Read and perform EACH version specific task below, otherwise you risk data inconsistency or a broken installation!
 
-And make sure to **create a backup before you start**.
+## [1.1](https://github.com/kevinpapst/kimai2/releases/tag/1.1)
 
-## 1.0 (unreleased)
+[Update as usual](https://www.kimai.org/documentation/updates.html), nothing special for this release if you upgrade from 1.0 / 1.0.1.
 
-Follow the normal update and database migration process (see above).
+## [1.0.1](https://github.com/kevinpapst/kimai2/releases/tag/1.0.1)
 
-### Apply necessary changes to your local.yaml:
+[Update as usual](https://www.kimai.org/documentation/updates.html), nothing special for this release if you upgrade from 1.0.
+
+## [1.0](https://github.com/kevinpapst/kimai2/releases/tag/1.0)
+
+This release contains several changes, as I still have the goal to stabilize the code base to prevent 
+such "challenges" after 1.0 for a while.
+
+### Changes for your local.yaml
  
-New permissions are available. If you configured custom permissions in `local.yaml`, you have to add those, otherwise you can't use the new features: 
+New permissions are available. You have to add them to your `local.yaml` ONLY if you use a custom permission structure, 
+otherwise you can't use the new features: 
 - `view_tag` - view all tags
 - `delete_tag` - delete tags
 - `edit_exported_timesheet` - allows to edit records which were exported
 - `role_permissions` - view calculated permissions for user roles
+- `budget_activity` - view and edit budgets for activities
+- `budget_project` - view and edit budgets for projects
+- `budget_customer` - view and edit budgets for customers
 
 Removed permission:
-- `system_actions` - removed experimental feature to flush your cache from the about screen
+- `system_actions` - removed experimental feature to flush app cache from the about screen
 
 ### BC BREAKS
 
-- API: Format for queries including a datetime object fixed, finally using the HTML5 format (previously `2019-03-02 14:23` - now `2019-03-02T14:23:00`)
+- API: Format for queries including a datetime object fixed to use HTML5 format (previously `2019-03-02 14:23` - now `2019-03-02T14:23:00`)
 - **Permission config**: the `permissions` definition in your `local.yaml` needs to be verified/changed, as the internal structure was highly optimized to simplify the definition. 
-Thanks to the new structure, you should be able to remove almost everything from your `local.yaml`: please read [the updated permission docu](https://www.kimai.org/documentation/permissions.html). 
+Thanks to the new structure, you should be able to remove almost everything from your `local.yaml` (tip: start over from scratch!). Please read [the updated permission docu](https://www.kimai.org/documentation/permissions.html). 
+- default widgets were removed from `kimai.yaml`, that shouldn't cause any issues ... but if something is odd: [look here for help](https://www.kimai.org/documentation/dashboard.html)
 
 ## [0.9](https://github.com/kevinpapst/kimai2/releases/tag/0.9)
-
-Follow the normal update and database migration process (see above).
 
 Remember to execute the necessary timezone conversion script, if you haven't updated to 0.8 before (see below)!
 
