@@ -12,6 +12,7 @@ namespace App\Form;
 use App\Entity\Customer;
 use App\Entity\Project;
 use App\Form\Type\CustomerType;
+use App\Form\Type\DateTimePickerType;
 use App\Repository\CustomerRepository;
 use App\Repository\Query\CustomerFormTypeQuery;
 use Symfony\Component\Form\AbstractType;
@@ -58,9 +59,16 @@ class ProjectEditForm extends AbstractType
                 'label' => 'label.orderNumber',
                 'required' => false,
             ])
+            ->add('orderDate', DateTimePickerType::class, [
+                'label' => 'label.orderDate',
+                'required' => false,
+            ])
             ->add('customer', CustomerType::class, [
-                'query_builder' => function (CustomerRepository $repo) use ($customer) {
-                    return $repo->getQueryBuilderForFormType(new CustomerFormTypeQuery($customer));
+                'query_builder' => function (CustomerRepository $repo) use ($builder, $customer) {
+                    $query = new CustomerFormTypeQuery($customer);
+                    $query->setUser($builder->getOption('user'));
+
+                    return $repo->getQueryBuilderForFormType($query);
                 },
             ]);
 

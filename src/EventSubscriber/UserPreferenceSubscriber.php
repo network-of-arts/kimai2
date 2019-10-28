@@ -66,6 +66,11 @@ class UserPreferenceSubscriber implements EventSubscriberInterface
         return $this->formConfig->getUserDefaultTheme();
     }
 
+    private function getDefaultCurrency(): ?string
+    {
+        return $this->formConfig->getUserDefaultCurrency();
+    }
+
     private function getDefaultLanguage(): string
     {
         return $this->formConfig->getUserDefaultLanguage();
@@ -88,9 +93,11 @@ class UserPreferenceSubscriber implements EventSubscriberInterface
     public function getDefaultPreferences(User $user)
     {
         $enableHourlyRate = false;
+        $hourlyRateOptions = [];
 
         if ($this->voter->isGranted('hourly-rate', $user)) {
             $enableHourlyRate = true;
+            $hourlyRateOptions = ['currency' => $this->getDefaultCurrency()];
         }
 
         return [
@@ -99,6 +106,7 @@ class UserPreferenceSubscriber implements EventSubscriberInterface
                 ->setValue(0)
                 ->setType(MoneyType::class)
                 ->setEnabled($enableHourlyRate)
+                ->setOptions($hourlyRateOptions)
                 ->addConstraint(new Range(['min' => 0])),
 
             (new UserPreference())
@@ -143,10 +151,6 @@ class UserPreferenceSubscriber implements EventSubscriberInterface
      */
     public function loadUserPreferences(PrepareUserEvent $event)
     {
-        if (!$this->canHandleEvent($event)) {
-            return;
-        }
-
         $user = $event->getUser();
 
         $prefs = [];
@@ -155,7 +159,7 @@ class UserPreferenceSubscriber implements EventSubscriberInterface
         }
 
         $event = new UserPreferenceEvent($user, $this->getDefaultPreferences($user));
-        $this->eventDispatcher->dispatch(UserPreferenceEvent::CONFIGURE, $event);
+        $this->eventDispatcher->dispatch($event);
 
         foreach ($event->getPreferences() as $preference) {
             /* @var UserPreference[] $prefs */
@@ -165,6 +169,7 @@ class UserPreferenceSubscriber implements EventSubscriberInterface
                     ->setType($preference->getType())
                     ->setConstraints($preference->getConstraints())
                     ->setEnabled($preference->isEnabled())
+                    ->setOptions($preference->getOptions())
                 ;
             } else {
                 $prefs[$preference->getName()] = $preference;
@@ -172,18 +177,5 @@ class UserPreferenceSubscriber implements EventSubscriberInterface
         }
 
         $user->setPreferences(array_values($prefs));
-    }
-
-    /**
-     * @param PrepareUserEvent $event
-     * @return bool
-     */
-    protected function canHandleEvent(PrepareUserEvent $event): bool
-    {
-        if (null === ($user = $event->getUser())) {
-            return false;
-        }
-
-        return ($user instanceof User);
     }
 }

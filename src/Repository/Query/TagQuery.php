@@ -11,4 +11,12 @@ namespace App\Repository\Query;
 
 class TagQuery extends BaseQuery
 {
+    public const TAG_ORDER_ALLOWED = ['id', 'name', 'amount'];
+
+    public function __construct()
+    {
+        $this->setDefaults([
+            'orderBy' => 'name',
+        ]);
+    }
 }

@@ -12,9 +12,11 @@ declare(strict_types=1);
 namespace App\API;
 
 use App\Entity\Activity;
+use App\Event\ActivityMetaDefinitionEvent;
 use App\Form\API\ActivityApiEditForm;
 use App\Repository\ActivityRepository;
 use App\Repository\Query\ActivityQuery;
+use App\Utils\SearchTerm;
 use FOS\RestBundle\Controller\Annotations as Rest;
 use FOS\RestBundle\Controller\Annotations\RouteResource;
 use FOS\RestBundle\Request\ParamFetcherInterface;
@@ -22,6 +24,7 @@ use FOS\RestBundle\View\View;
 use FOS\RestBundle\View\ViewHandlerInterface;
 use Sensio\Bundle\FrameworkExtraBundle\Configuration\Security;
 use Swagger\Annotations as SWG;
+use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
@@ -29,23 +32,28 @@ use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
 /**
  * @RouteResource("Activity")
  *
- * @Security("is_granted('ROLE_USER')")
+ * @Security("is_granted('IS_AUTHENTICATED_REMEMBERED')")
  */
 class ActivityController extends BaseApiController
 {
     /**
      * @var ActivityRepository
      */
-    protected $repository;
+    private $repository;
     /**
      * @var ViewHandlerInterface
      */
-    protected $viewHandler;
+    private $viewHandler;
+    /**
+     * @var EventDispatcherInterface
+     */
+    private $dispatcher;
 
-    public function __construct(ViewHandlerInterface $viewHandler, ActivityRepository $repository)
+    public function __construct(ViewHandlerInterface $viewHandler, ActivityRepository $repository, EventDispatcherInterface $dispatcher)
     {
         $this->viewHandler = $viewHandler;
         $this->repository = $repository;
+        $this->dispatcher = $dispatcher;
     }
 
     /**
@@ -65,7 +73,9 @@ class ActivityController extends BaseApiController
      * @Rest\QueryParam(name="globalsFirst", requirements="true|false", strict=true, nullable=true, description="Deprecated parameter, value is not used any more")
      * @Rest\QueryParam(name="orderBy", requirements="id|name|project", strict=true, nullable=true, description="The field by which results will be ordered. Allowed values: id, name, project (default: name)")
      * @Rest\QueryParam(name="order", requirements="ASC|DESC", strict=true, nullable=true, description="The result order. Allowed values: ASC, DESC (default: ASC)")
+     * @Rest\QueryParam(name="term", requirements="[a-zA-Z0-9 \-,:]+", strict=true, nullable=true, description="Free search term")
      *
+     * @param ParamFetcherInterface $paramFetcher
      * @return Response
      */
     public function cgetAction(ParamFetcherInterface $paramFetcher)
@@ -96,6 +106,10 @@ class ActivityController extends BaseApiController
             $query->setVisibility($visible);
         }
 
+        if (!empty($term = $paramFetcher->get('term'))) {
+            $query->setSearchTerm(new SearchTerm($term));
+        }
+
         $data = $this->repository->getActivitiesForQuery($query);
         $view = new View($data, 200);
         $view->getContext()->setGroups(['Default', 'Collection', 'Activity']);
@@ -124,7 +138,6 @@ class ActivityController extends BaseApiController
      */
     public function getAction($id)
     {
-        /** @var Activity $data */
         $data = $this->repository->find($id);
 
         if (null === $data) {
@@ -169,14 +182,15 @@ class ActivityController extends BaseApiController
 
         $activity = new Activity();
 
+        $event = new ActivityMetaDefinitionEvent($activity);
+        $this->dispatcher->dispatch($event);
+
         $form = $this->createForm(ActivityApiEditForm::class, $activity);
 
         $form->submit($request->request->all());
 
         if ($form->isValid()) {
-            $entityManager = $this->getDoctrine()->getManager();
-            $entityManager->persist($activity);
-            $entityManager->flush();
+            $this->repository->saveActivity($activity);
 
             $view = new View($activity, 200);
             $view->getContext()->setGroups(['Default', 'Entity', 'Activity']);
@@ -218,6 +232,8 @@ class ActivityController extends BaseApiController
      * @param Request $request
      * @param string $id
      * @return Response
+     * @throws \Doctrine\ORM\ORMException
+     * @throws \Doctrine\ORM\OptimisticLockException
      */
     public function patchAction(Request $request, string $id)
     {
@@ -231,6 +247,9 @@ class ActivityController extends BaseApiController
             throw new AccessDeniedHttpException('User cannot update activity');
         }
 
+        $event = new ActivityMetaDefinitionEvent($activity);
+        $this->dispatcher->dispatch($event);
+
         $form = $this->createForm(ActivityApiEditForm::class, $activity);
 
         $form->setData($activity);
@@ -243,12 +262,66 @@ class ActivityController extends BaseApiController
             return $this->viewHandler->handle($view);
         }
 
-        $entityManager = $this->getDoctrine()->getManager();
-        $entityManager->persist($activity);
-        $entityManager->flush();
+        $this->repository->saveActivity($activity);
 
         $view = new View($activity, Response::HTTP_OK);
         $view->getContext()->setGroups(['Default', 'Entity', 'Activity']);
+
+        return $this->viewHandler->handle($view);
+    }
+
+    /**
+     * Sets the value of a meta-field for an existing activity.
+     *
+     * @SWG\Response(
+     *      response=200,
+     *      description="Sets the value of an existing/configured meta-field. You cannot create unknown meta-fields, if the given name is not a configured meta-field, this will return an exception.",
+     *      @SWG\Schema(ref="#/definitions/ActivityEntity")
+     * )
+     * @SWG\Parameter(
+     *      name="id",
+     *      in="path",
+     *      type="integer",
+     *      description="Activity record ID to set the meta-field value for",
+     *      required=true,
+     * )
+     * @Rest\RequestParam(name="name", strict=true, nullable=false, description="The meta-field name")
+     * @Rest\RequestParam(name="value", strict=true, nullable=false, description="The meta-field value")
+     *
+     * @param int $id
+     * @param ParamFetcherInterface $paramFetcher
+     * @return Response
+     * @throws \Doctrine\ORM\ORMException
+     * @throws \Doctrine\ORM\OptimisticLockException
+     */
+    public function metaAction($id, ParamFetcherInterface $paramFetcher)
+    {
+        $activity = $this->repository->find($id);
+
+        if (null === $activity) {
+            throw new NotFoundException();
+        }
+
+        if (!$this->isGranted('edit', $activity)) {
+            throw new AccessDeniedHttpException('You are not allowed to update this activity');
+        }
+
+        $event = new ActivityMetaDefinitionEvent($activity);
+        $this->dispatcher->dispatch($event);
+
+        $name = $paramFetcher->get('name');
+        $value = $paramFetcher->get('value');
+
+        if (null === ($meta = $activity->getMetaField($name))) {
+            throw new \InvalidArgumentException('Unknown meta-field requested');
+        }
+
+        $meta->setValue($value);
+
+        $this->repository->saveActivity($activity);
+
+        $view = new View($activity, 200);
+        $view->getContext()->setGroups(['Default', 'Entity', 'Project']);
 
         return $this->viewHandler->handle($view);
     }

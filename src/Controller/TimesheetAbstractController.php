@@ -10,9 +10,11 @@
 namespace App\Controller;
 
 use App\Configuration\TimesheetConfiguration;
+use App\Entity\MetaTableTypeInterface;
 use App\Entity\Tag;
 use App\Entity\Timesheet;
 use App\Event\TimesheetMetaDefinitionEvent;
+use App\Event\TimesheetMetaDisplayEvent;
 use App\Form\TimesheetEditForm;
 use App\Form\Toolbar\TimesheetToolbarForm;
 use App\Repository\ActivityRepository;
@@ -81,7 +83,7 @@ abstract class TimesheetAbstractController extends AbstractController
         return $this->repository;
     }
 
-    protected function index($page, Request $request, string $renderTemplate)
+    protected function index($page, Request $request, string $renderTemplate, string $location): Response
     {
         $query = new TimesheetQuery();
         $query->setPage($page);
@@ -90,13 +92,15 @@ abstract class TimesheetAbstractController extends AbstractController
         $form->setData($query);
         $form->submit($request->query->all(), false);
 
-        if ($form->isValid()) {
-            if (null !== $query->getBegin()) {
-                $query->getBegin()->setTime(0, 0, 0);
-            }
-            if (null !== $query->getEnd()) {
-                $query->getEnd()->setTime(23, 59, 59);
-            }
+        if (!$form->isValid()) {
+            $query->resetByFormError($form->getErrors());
+        }
+
+        if (null !== $query->getBegin()) {
+            $query->getBegin()->setTime(0, 0, 0);
+        }
+        if (null !== $query->getEnd()) {
+            $query->getEnd()->setTime(23, 59, 59);
         }
 
         $tags = $query->getTags(true);
@@ -110,11 +114,7 @@ abstract class TimesheetAbstractController extends AbstractController
             );
         }
 
-        $dirtyQuery = $query->isDirty();
-
-        if (!$this->includeUserInForms()) {
-            $query->setUser($this->getUser());
-        }
+        $this->prepareQuery($query);
 
         $pager = $this->getRepository()->getPagerfantaForQuery($query);
 
@@ -122,23 +122,30 @@ abstract class TimesheetAbstractController extends AbstractController
             'entries' => $pager,
             'page' => $query->getPage(),
             'query' => $query,
-            'showFilter' => $dirtyQuery,
             'toolbarForm' => $form->createView(),
             'showSummary' => $this->includeSummary(),
-            'showStartEndTime' => $this->canSeeStartEndTime()
+            'showStartEndTime' => $this->canSeeStartEndTime(),
+            'metaColumns' => $this->findMetaColumns($query, $location),
         ]);
     }
 
     /**
-     * @param Timesheet $entry
-     * @param Request $request
-     * @param string $renderTemplate
-     * @return \Symfony\Component\HttpFoundation\RedirectResponse|\Symfony\Component\HttpFoundation\Response
+     * @param TimesheetQuery $query
+     * @param string $location
+     * @return MetaTableTypeInterface[]
      */
-    protected function edit(Timesheet $entry, Request $request, string $renderTemplate)
+    protected function findMetaColumns(TimesheetQuery $query, string $location): array
+    {
+        $event = new TimesheetMetaDisplayEvent($query, $location);
+        $this->dispatcher->dispatch($event);
+
+        return $event->getFields();
+    }
+
+    protected function edit(Timesheet $entry, Request $request, string $renderTemplate): Response
     {
         $event = new TimesheetMetaDefinitionEvent($entry);
-        $this->dispatcher->dispatch(TimesheetMetaDefinitionEvent::class, $event);
+        $this->dispatcher->dispatch($event);
 
         $editForm = $this->getEditForm($entry, $request->get('page'));
         $editForm->handleRequest($request);
@@ -160,14 +167,7 @@ abstract class TimesheetAbstractController extends AbstractController
         ]);
     }
 
-    /**
-     * @param Request $request
-     * @param string $renderTemplate
-     * @param ProjectRepository $projectRepository
-     * @param ActivityRepository $activityRepository
-     * @return \Symfony\Component\HttpFoundation\RedirectResponse|\Symfony\Component\HttpFoundation\Response
-     */
-    protected function create(Request $request, string $renderTemplate, ProjectRepository $projectRepository, ActivityRepository $activityRepository, TagRepository $tagRepository)
+    protected function create(Request $request, string $renderTemplate, ProjectRepository $projectRepository, ActivityRepository $activityRepository, TagRepository $tagRepository): Response
     {
         $entry = new Timesheet();
         $entry->setUser($this->getUser());
@@ -186,7 +186,7 @@ abstract class TimesheetAbstractController extends AbstractController
         if ($request->query->get('tags')) {
             $tagNames = explode(',', $request->query->get('tags'));
             foreach ($tagNames as $tagName) {
-                $tag = $tagRepository->findOneByName($tagName);
+                $tag = $tagRepository->findTagByName($tagName);
                 if (!$tag) {
                     $tag = new Tag();
                     $tag->setName($tagName);
@@ -196,7 +196,7 @@ abstract class TimesheetAbstractController extends AbstractController
         }
 
         $event = new TimesheetMetaDefinitionEvent($entry);
-        $this->dispatcher->dispatch(TimesheetMetaDefinitionEvent::class, $event);
+        $this->dispatcher->dispatch($event);
 
         $mode = $this->getTrackingMode();
         $mode->create($entry, $request);
@@ -227,12 +227,7 @@ abstract class TimesheetAbstractController extends AbstractController
         ]);
     }
 
-    /**
-     * @param Request $request
-     * @param string $renderTemplate
-     * @return Response
-     */
-    protected function export(Request $request, string $renderTemplate)
+    protected function export(Request $request, string $renderTemplate, string $location): Response
     {
         $query = new TimesheetQuery();
 
@@ -253,16 +248,20 @@ abstract class TimesheetAbstractController extends AbstractController
         }
         $query->getEnd()->setTime(23, 59, 59);
 
-        if (!$this->includeUserInForms()) {
-            $query->setUser($this->getUser());
-        }
+        $this->prepareQuery($query);
 
         $entries = $this->getRepository()->getTimesheetsForQuery($query);
 
         return $this->render($renderTemplate, [
             'entries' => $entries,
             'query' => $query,
+            'metaColumns' => $this->findMetaColumns($query, $location),
         ]);
+    }
+
+    protected function prepareQuery(TimesheetQuery $query)
+    {
+        $query->setUser($this->getUser());
     }
 
     protected function getCreateForm(Timesheet $entry, TrackingModeInterface $mode): FormInterface

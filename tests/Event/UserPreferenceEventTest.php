@@ -31,16 +31,15 @@ class UserPreferenceEventTest extends TestCase
         $this->assertEquals($user, $sut->getUser());
         $this->assertEquals([], $sut->getPreferences());
 
-        $sut->addUserPreference($pref);
+        $sut->addPreference($pref);
 
         $this->assertEquals([$pref], $sut->getPreferences());
     }
 
-    /**
-     * @expectedException \InvalidArgumentException
-     */
     public function testDuplicatePreferenceThrowsException()
     {
+        $this->expectException(\InvalidArgumentException::class);
+
         $user = new User();
         $user->setAlias('foo');
         $pref = new UserPreference();
@@ -51,7 +50,7 @@ class UserPreferenceEventTest extends TestCase
 
         $sut = new UserPreferenceEvent($user, []);
 
-        $sut->addUserPreference($pref);
-        $sut->addUserPreference($pref2);
+        $sut->addUserPreference($pref); // change me, once the deprecated method will be deleted
+        $sut->addPreference($pref2);
     }
 }

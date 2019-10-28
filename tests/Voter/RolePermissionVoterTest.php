@@ -40,7 +40,7 @@ class RolePermissionVoterTest extends AbstractVoterTest
         $user4 = $this->getUser(4, User::ROLE_SUPER_ADMIN);
 
         $invoice = [
-            'create_invoice_template' => null,
+            'manage_invoice_template' => null,
             'view_invoice' => null,
             'create_invoice' => null,
         ];
@@ -57,7 +57,6 @@ class RolePermissionVoterTest extends AbstractVoterTest
         ];
 
         $others = [
-            'create_activity' => null,
             'create_customer' => null,
             'create_project' => null,
         ];
@@ -98,6 +97,11 @@ class RolePermissionVoterTest extends AbstractVoterTest
 
         foreach ([$user0, $user1, $user2] as $user) {
             foreach ($others as $permission => $entity) {
+                yield [$user, $entity, $permission, $result];
+            }
+        }
+        foreach ([$user0, $user1] as $user) {
+            foreach (['view_activity' => null] as $permission => $entity) {
                 yield [$user, $entity, $permission, $result];
             }
         }

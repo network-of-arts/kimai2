@@ -1,9 +1,8 @@
 {% extends 'base.html.twig' %}
 {% import "macros/widgets.html.twig" as widgets %}
-{% import "macros/actions.html.twig" as actions %}
+{% import "calendar/actions.html.twig" as actions %}
 
 {% block page_title %}{{ 'calendar.title'|trans }}{% endblock %}
-{% block page_subtitle %}{{ 'calendar.subtitle'|trans }}{% endblock %}
 {% block page_actions %}{{ actions.calendar('index') }}{% endblock %}
 
 {% block main %}

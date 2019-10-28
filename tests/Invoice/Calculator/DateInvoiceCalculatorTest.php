@@ -16,7 +16,7 @@ use App\Entity\Project;
 use App\Entity\Timesheet;
 use App\Entity\User;
 use App\Invoice\Calculator\DateInvoiceCalculator;
-use App\Model\InvoiceModel;
+use App\Invoice\InvoiceModel;
 use App\Repository\Query\InvoiceQuery;
 use DateTime;
 
@@ -134,15 +134,5 @@ class DateInvoiceCalculatorTest extends AbstractCalculatorTest
     public function testDescriptionByTimesheet()
     {
         $this->assertDescription(new DateInvoiceCalculator(), false, false);
-    }
-
-    public function testDescriptionByActivity()
-    {
-        $this->assertDescription(new DateInvoiceCalculator(), false, true);
-    }
-
-    public function testDescriptionByProject()
-    {
-        $this->assertDescription(new DateInvoiceCalculator(), true, false);
     }
 }

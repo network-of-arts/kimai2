@@ -2,25 +2,31 @@
 {% import "macros/widgets.html.twig" as widgets %}
 {% import "macros/datatables.html.twig" as tables %}
 {% import "macros/toolbar.html.twig" as toolbar %}
-{% import "macros/actions.html.twig" as actions %}
+{% import "activity/actions.html.twig" as actions %}
 
 {% set columns = {
     'name': 'alwaysVisible',
     'customer': 'hidden-xs',
     'project': 'hidden-xs',
-    'comment': 'hidden-xs',
-    'visible': '',
-    'actions': 'actions alwaysVisible',
+    'comment': 'hidden-xs hidden-sm',
 } %}
+{% for field in metaColumns %}
+    {% set columns = columns|merge({
+        ('mf_' ~ field.name): {'title': field.label, 'class': 'hidden-xs hidden-sm', 'orderBy': false}
+    }) %}
+{% endfor %}
+{% set columns = columns|merge({
+    'visible': {'class': 'text-center', 'orderBy': false},
+    'actions': 'actions alwaysVisible',
+}) %}
 
 {% set tableName = 'activity_admin' %}
 
 {% block page_title %}{{ 'admin_activity.title'|trans }}{% endblock %}
-{% block page_subtitle %}{{ 'admin_activity.subtitle'|trans }}{% endblock %}
+{% block page_search %}{{ toolbar.dropDownSearch(toolbarForm) }}{% endblock %}
 {% block page_actions %}{{ actions.activities('index') }}{% endblock %}
 
 {% block main_before %}
-    {{ toolbar.toolbar(toolbarForm, 'collapseActivityAdmin', showFilter) }}
     {{ tables.data_table_column_modal(tableName, columns) }}
 {% endblock %}
 
@@ -29,8 +35,7 @@
     {% if entries.count == 0 %}
         {{ widgets.callout('warning', 'error.no_entries_found') }}
     {% else %}
-
-        {{ tables.data_table_header(tableName, columns, false, 'kimai.activityUpdate') }}
+        {{ tables.datatable_header(tableName, columns, query, {'reload': 'kimai.activityUpdate'}) }}
 
         {% for entry in entries %}
             <tr{% if is_granted('edit', entry) %} class="modal-ajax-form open-edit" data-href="{{ path('admin_activity_edit', {'id': entry.id}) }}"{% endif %}>
@@ -38,16 +43,21 @@
                 <td class="{{ tables.data_table_column_class(tableName, columns, 'customer') }}">
                     {% if entry.project and entry.project.customer %}
                         {# only none-global activities have a project and customer assigned #}
-                        {{ widgets.label_customer(entry.project.customer, path('admin_customer_edit', {'id' : entry.project.customer.id})) }}
+                        {{ widgets.label_customer(entry.project.customer) }}
                     {% endif %}
                 </td>
                 <td class="{{ tables.data_table_column_class(tableName, columns, 'project') }}">
                     {% if entry.project %}
                         {# only none-global activities have a project and customer assigned #}
-                        {{ widgets.label_project(entry.project, path('admin_project_edit', {'id' : entry.project.id})) }}
+                        {{ widgets.label_project(entry.project) }}
                     {% endif %}
                 </td>
                 <td class="{{ tables.data_table_column_class(tableName, columns, 'comment') }}">{{ entry.comment|comment2html }}</td>
+                {% for field in metaColumns %}
+                    <td class="text-nowrap {{ tables.data_table_column_class(tableName, columns, 'mf_' ~ field.name) }}">
+                        {{ tables.datatable_meta_column(entry, field) }}
+                    </td>
+                {% endfor %}
                 <td class="{{ tables.data_table_column_class(tableName, columns, 'visible') }}">{{ widgets.label_visible(entry.visible) }}</td>
                 <td class="actions">
                     {{ actions.activity(entry, 'index') }}

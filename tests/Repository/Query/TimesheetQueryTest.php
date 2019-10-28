@@ -17,6 +17,7 @@ use App\Repository\Query\TimesheetQuery;
 
 /**
  * @covers \App\Repository\Query\TimesheetQuery
+ * @covers \App\Repository\Query\BaseQuery
  */
 class TimesheetQueryTest extends BaseQueryTest
 {
@@ -24,18 +25,21 @@ class TimesheetQueryTest extends BaseQueryTest
     {
         $sut = new TimesheetQuery();
 
-        $this->assertResultType($sut);
         $this->assertPage($sut);
         $this->assertPageSize($sut);
         $this->assertOrderBy($sut, 'begin');
         $this->assertOrder($sut, TimesheetQuery::ORDER_DESC);
 
         $this->assertUser($sut);
+        $this->assertUsers($sut);
         $this->assertCustomer($sut);
         $this->assertProject($sut);
         $this->assertActivity($sut);
         $this->assertState($sut);
         $this->assertExported($sut);
+        $this->assertSearchTerm($sut);
+
+        $this->assertResetByFormError(new TimesheetQuery(), 'begin', 'DESC');
     }
 
     protected function assertUser(TimesheetQuery $sut)
@@ -46,6 +50,30 @@ class TimesheetQueryTest extends BaseQueryTest
         $expected->setUsername('foo-bar');
         $sut->setUser($expected);
         $this->assertEquals($expected, $sut->getUser());
+    }
+
+    protected function assertUsers(TimesheetQuery $sut)
+    {
+        $this->assertEmpty($sut->getUsers());
+
+        $user = $this->getMockBuilder(User::class)->disableOriginalConstructor()->getMock();
+        $user->method('getId')->willReturn(1);
+        $sut->addUser($user);
+
+        $user = $this->getMockBuilder(User::class)->disableOriginalConstructor()->getMock();
+        $user->method('getId')->willReturn(1);
+        $sut->addUser($user);
+
+        $user = $this->getMockBuilder(User::class)->disableOriginalConstructor()->getMock();
+        $user->method('getId')->willReturn(13);
+        $sut->addUser($user);
+
+        $user = $this->getMockBuilder(User::class)->disableOriginalConstructor()->getMock();
+        $user->method('getId')->willReturn(27);
+        $sut->addUser($user);
+        $sut->removeUser($user);
+
+        $this->assertCount(2, $sut->getUsers());
     }
 
     protected function assertCustomer(TimesheetQuery $sut)

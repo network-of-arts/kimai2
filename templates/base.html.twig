@@ -85,7 +85,7 @@
                 </a>
             </li>
         {% endif %}
-        {% if is_granted('view_export') %}
+        {% if is_granted('create_export') %}
             <li class="visible-xs-inline-block">
                 <a href="{{ path('export') }}" class="ddt-large">
                     <i class="{{ 'export'|icon }} fa-2x"></i>
@@ -117,7 +117,7 @@
     {% import "macros/widgets.html.twig" as widgets %}
     <li class="dropdown user-menu">
         <a href="#" class="dropdown-toggle ddt-large" data-toggle="dropdown">
-            <i class="{{ 'avatar'|icon }} fa-2x"></i>
+            {{ widgets.user_avatar(app.user, false) }}
         </a>
         <ul class="dropdown-menu">
             {% if app.user is not null %}
@@ -125,8 +125,8 @@
                 <li>
                     <a href="{{ path('user_profile', {'username' : app.user.username}) }}">
                         <h4 class="control-sidebar-subheading">
-                            <i class="{{ 'profile-stats'|icon }}"></i>
-                            {{ widgets.username(app.user) }}
+                            <i class="{{ 'avatar'|icon }}"></i>
+                            {{ 'my.profile'|trans }}
                         </h4>
                     </a>
                 </li>
@@ -136,7 +136,7 @@
                     <a href="{{ path('user_profile_edit', {'username' : app.user.username}) }}">
                         <h4 class="control-sidebar-subheading">
                             <i class="{{ 'profile'|icon }}"></i>
-                            {{ 'profile.title'|trans }}
+                            {{ 'action.edit'|trans }}
                         </h4>
                     </a>
                 </li>
@@ -176,6 +176,7 @@
 {% endblock %}
 
 {% block breadcrumb %}
+    {% block page_search %}{% endblock %}
     {% block page_actions %}{% endblock %}
 {% endblock %}
 
@@ -200,8 +201,11 @@
         document.addEventListener('DOMContentLoaded', function() {
             var loader = new KimaiWebLoader(
                 {
+                    login: '{{ path('fos_user_security_login') }}',
                     locale: '{{ app.request.locale }}',
-                    twentyFourHours: {{ 'true'|hour24('false') }}
+                    twentyFourHours: {{ 'true'|hour24('false') }},
+                    autoReloadDatatable: {% if theme_config('auto_reload_datatable') %}true{% else %}false{% endif %},
+                    autoComplete: {{ theme_config('autocomplete_chars') }}
                 },
                 {
                     'confirm': '{{ 'confirm'|trans }}',
@@ -225,7 +229,8 @@
                     'action.delete.success': '{{ 'action.delete.success'|trans({}, 'flashmessages') }}',
                     'action.delete.error': '{{ 'action.delete.error'|trans({}, 'flashmessages') }}',
                     'confirm.delete': '{{ 'confirm.delete' |trans }}',
-                    'delete': '{{ 'action.delete' |trans }}'
+                    'delete': '{{ 'action.delete' |trans }}',
+                    'login.required': '{{ 'login_required'|trans }}'
                 }
             );
             window.kimai = loader.getKimai();

@@ -514,6 +514,10 @@ class KimaiImporterCommand extends Command
                     continue;
                 }
 
+                if (empty($pref['value'])) {
+                    continue;
+                }
+
                 $newPref = new UserPreference();
                 $newPref
                     ->setName($prefsToImport[$key])
@@ -830,9 +834,9 @@ class KimaiImporterCommand extends Command
         $activity = new Activity();
         $activity
             ->setName($name)
-            ->setComment($oldActivity['comment'] ?: null)
+            ->setComment($oldActivity['comment'] ?? null)
             ->setVisible($isActive)
-            ->setBudget($oldActivity['budget'] ?: 0)
+            ->setBudget($oldActivity['budget'] ?? 0)
         ;
 
         if (null !== $projectId) {
@@ -1059,7 +1063,7 @@ class KimaiImporterCommand extends Command
             // ---------------------------------------------------------------------
 
             $timesheet
-                ->setDescription($oldRecord['description'] ?: ($oldRecord['comment'] ?: null))
+                ->setDescription($oldRecord['description'] ?? ($oldRecord['comment'] ?? null))
                 ->setUser($this->users[$oldRecord['userID']])
                 ->setBegin($begin)
                 ->setEnd($end)

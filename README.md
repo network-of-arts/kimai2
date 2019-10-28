@@ -5,6 +5,7 @@
 [![Travis Status](https://travis-ci.org/kevinpapst/kimai2.svg?branch=master)](https://travis-ci.org/kevinpapst/kimai2)
 [![Code Coverage](https://codecov.io/gh/kevinpapst/kimai2/branch/master/graph/badge.svg)](https://codecov.io/gh/kevinpapst/kimai2)
 [![Gitter](https://badges.gitter.im/kimai2/support.svg)](https://gitter.im/kimai2/support)
+[![Bountysource](https://img.shields.io/bountysource/team/kimai2/activity)](https://www.bountysource.com/teams/kimai2)
 
 Kimai is a free, open source and online time-tracking software designed for small businesses and freelancers. 
 It is built with modern technologies such as Symfony, Bootstrap, RESTful API, Doctrine, AdminLTE, Webpack, ES6 etc.
@@ -60,7 +61,7 @@ It is open for changes and input from the community, your [ideas and questions](
 > Kimai 2 uses a rolling release concept for delivering updates.
 > You can upgrade Kimai at any time, you don't need to wait for the next official release.
 
-Release versions will be created on a regular base (approx. every second month) and you can use these tags if you are familiar with git.
+Release versions will be created on a regular base (approx. one release per month) and you can use these tags if you are familiar with git.
 Every code change, whether it's a new feature or a bug fix, will be done on the master branch. 
 I have to do it this way, as I develop Kimai in my free time and want to put my effort into the software instead of backporting changes for old versions. 
 

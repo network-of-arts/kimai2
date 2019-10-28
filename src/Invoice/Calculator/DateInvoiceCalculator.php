@@ -9,17 +9,21 @@
 
 namespace App\Invoice\Calculator;
 
-use App\Entity\Timesheet;
 use App\Invoice\CalculatorInterface;
+use App\Invoice\InvoiceItemInterface;
 
 /**
- * A calculator that sums up the timesheet records for each day.
+ * A calculator that sums up the invoice item records for each day.
  */
 class DateInvoiceCalculator extends AbstractSumInvoiceCalculator implements CalculatorInterface
 {
-    protected function calculateSumIdentifier(Timesheet $timesheet): string
+    protected function calculateSumIdentifier(InvoiceItemInterface $invoiceItem): string
     {
-        return $timesheet->getBegin()->format('Y-m-d');
+        if (null === $invoiceItem->getBegin()) {
+            throw new \Exception('Cannot handle invoice items without start date');
+        }
+
+        return $invoiceItem->getBegin()->format('Y-m-d');
     }
 
     /**

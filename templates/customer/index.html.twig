@@ -2,25 +2,36 @@
 {% import "macros/widgets.html.twig" as widgets %}
 {% import "macros/datatables.html.twig" as tables %}
 {% import "macros/toolbar.html.twig" as toolbar %}
-{% import "macros/actions.html.twig" as actions %}
+{% import "customer/actions.html.twig" as actions %}
 
 {% set columns = {
     'name': 'alwaysVisible',
     'comment': 'hidden-xs',
-    'country': 'hidden-xs',
+    'country': 'hidden-xs hidden-sm',
     'number': 'hidden-xs',
-    'visible': 'hidden-xs',
-    'actions': 'actions alwaysVisible',
 } %}
+{% for field in metaColumns %}
+    {% set columns = columns|merge({
+        ('mf_' ~ field.name): {'title': field.label, 'class': 'hidden-xs hidden-sm', 'orderBy': false}
+    }) %}
+{% endfor %}
+{% set columns = columns|merge({
+    'email': {'class': 'text-center hidden hidden-xs', 'orderBy': false},
+    'homepage': {'class': 'text-center hidden hidden-xs', 'orderBy': false},
+    'mobile': {'class': 'text-center hidden hidden-xs', 'orderBy': false},
+    'phone': {'class': 'text-center hidden hidden-xs', 'orderBy': false},
+    'team': {'class': 'text-center', 'orderBy': false},
+    'visible': {'class': 'text-center', 'orderBy': false},
+    'actions': 'actions alwaysVisible',
+}) %}
 
 {% set tableName = 'customer_admin' %}
 
 {% block page_title %}{{ 'admin_customer.title'|trans }}{% endblock %}
-{% block page_subtitle %}{{ 'admin_customer.subtitle'|trans }}{% endblock %}
+{% block page_search %}{{ toolbar.dropDownSearch(toolbarForm) }}{% endblock %}
 {% block page_actions %}{{ actions.customers('index') }}{% endblock %}
 
 {% block main_before %}
-    {{ toolbar.toolbar(toolbarForm, 'collapseCustomerAdmin', showFilter) }}
     {{ tables.data_table_column_modal(tableName, columns) }}
 {% endblock %}
 
@@ -29,7 +40,7 @@
     {% if entries.count == 0 %}
         {{ widgets.callout('warning', 'error.no_entries_found') }}
     {% else %}
-        {{ tables.data_table_header(tableName, columns, false, 'kimai.customerUpdate') }}
+        {{ tables.datatable_header(tableName, columns, query, {'reload': 'kimai.customerUpdate'}) }}
 
         {% for entry in entries %}
             <tr{% if is_granted('edit', entry) %} class="modal-ajax-form open-edit" data-href="{{ path('admin_customer_edit', {'id': entry.id}) }}"{% endif %}>
@@ -37,6 +48,46 @@
                 <td class="{{ tables.data_table_column_class(tableName, columns, 'comment') }}">{{ entry.comment|comment2html }}</td>
                 <td class="{{ tables.data_table_column_class(tableName, columns, 'country') }}">{{ entry.country|country }}</td>
                 <td class="{{ tables.data_table_column_class(tableName, columns, 'number') }}">{{ entry.number }}</td>
+                {% for field in metaColumns %}
+                    <td class="text-nowrap {{ tables.data_table_column_class(tableName, columns, 'mf_' ~ field.name) }}">
+                        {{ tables.datatable_meta_column(entry, field) }}
+                    </td>
+                {% endfor %}
+                <td class="{{ tables.data_table_column_class(tableName, columns, 'email') }}">
+                    {% if entry.email is not empty %}
+                        <a href="mailto:{{ entry.email }}"><i class="{{ 'mail'|icon }}"></i></a>
+                    {% else %}
+                        &ndash;
+                    {% endif %}
+                </td>
+                <td class="{{ tables.data_table_column_class(tableName, columns, 'homepage') }}">
+                    {% if entry.homepage is not empty %}
+                        <a href="{{ entry.homepage }}" target="_blank"><i class="{{ 'home'|icon }}"></i></a>
+                    {% else %}
+                        &ndash;
+                    {% endif %}
+                </td>
+                <td class="{{ tables.data_table_column_class(tableName, columns, 'mobile') }}">
+                    {% if entry.mobile is not empty %}
+                        <a href="tel:{{ entry.mobile }}"><i class="{{ 'mobile'|icon }}"></i></a>
+                    {% else %}
+                        &ndash;
+                    {% endif %}
+                </td>
+                <td class="{{ tables.data_table_column_class(tableName, columns, 'phone') }}">
+                    {% if entry.phone is not empty %}
+                        <a href="tel:{{ entry.phone }}"><i class="{{ 'phone'|icon }}"></i></a>
+                    {% else %}
+                        &ndash;
+                    {% endif %}
+                </td>
+                <td class="{{ tables.data_table_column_class(tableName, columns, 'team') }}">
+                    {% if entry.teams|length > 0 %}
+                        {{ widgets.badge_counter(entry.teams|length) }}
+                    {% else %}
+                        {{ widgets.icon('unlocked') }}
+                    {% endif %}
+                </td>
                 <td class="{{ tables.data_table_column_class(tableName, columns, 'visible') }}">{{ widgets.label_visible(entry.visible) }}</td>
                 <td class="actions">
                     {{ actions.customer(entry, 'index') }}

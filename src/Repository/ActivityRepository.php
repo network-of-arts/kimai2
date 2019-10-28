@@ -11,6 +11,7 @@ namespace App\Repository;
 
 use App\Entity\Activity;
 use App\Entity\Timesheet;
+use App\Entity\User;
 use App\Model\ActivityStatistic;
 use App\Repository\Loader\ActivityLoader;
 use App\Repository\Paginator\LoaderPaginator;
@@ -25,6 +26,26 @@ use Pagerfanta\Pagerfanta;
 
 class ActivityRepository extends EntityRepository
 {
+    /**
+     * @param mixed $id
+     * @param null $lockMode
+     * @param null $lockVersion
+     * @return Activity|null
+     */
+    public function find($id, $lockMode = null, $lockVersion = null)
+    {
+        /** @var Activity|null $activity */
+        $activity = parent::find($id, $lockMode, $lockVersion);
+        if (null === $activity) {
+            return null;
+        }
+
+        $loader = new ActivityLoader($this->getEntityManager());
+        $loader->loadResults([$activity]);
+
+        return $activity;
+    }
+
     /**
      * @param Activity $activity
      * @throws ORMException
@@ -79,6 +100,47 @@ class ActivityRepository extends EntityRepository
         }
 
         return $stats;
+    }
+
+    private function addPermissionCriteria(QueryBuilder $qb, ?User $user = null, array $teams = [])
+    {
+        // make sure that all queries without a user see all projects
+        if (null === $user && empty($teams)) {
+            return;
+        }
+
+        // make sure that admins see all activities
+        if (null !== $user && ($user->isSuperAdmin() || $user->isAdmin())) {
+            return;
+        }
+
+        if (null !== $user) {
+            $teams = array_merge($teams, $user->getTeams()->toArray());
+        }
+
+        $qb->leftJoin('p.teams', 'teams')
+            ->leftJoin('c.teams', 'c_teams');
+
+        if (empty($teams)) {
+            $qb->andWhere($qb->expr()->isNull('c_teams'));
+            $qb->andWhere($qb->expr()->isNull('teams'));
+
+            return;
+        }
+
+        $orProject = $qb->expr()->orX(
+            $qb->expr()->isNull('teams'),
+            $qb->expr()->isMemberOf(':teams', 'p.teams')
+        );
+        $qb->andWhere($orProject);
+
+        $orCustomer = $qb->expr()->orX(
+            $qb->expr()->isNull('c_teams'),
+            $qb->expr()->isMemberOf(':teams', 'c.teams')
+        );
+        $qb->andWhere($orCustomer);
+
+        $qb->setParameter('teams', $teams);
     }
 
     /**
@@ -181,15 +243,24 @@ class ActivityRepository extends EntityRepository
         $qb
             ->select('a')
             ->from(Activity::class, 'a')
-            ->addOrderBy('a.' . $query->getOrderBy(), $query->getOrder())
+            ->leftJoin('a.project', 'p')
+            ->leftJoin('p.customer', 'c')
         ;
 
-        if (!$query->isGlobalsOnly()) {
-            $qb
-                ->leftJoin('a.project', 'p')
-                ->leftJoin('p.customer', 'c')
-            ;
+        $orderBy = $query->getOrderBy();
+        switch ($orderBy) {
+            case 'project':
+                $orderBy = 'p.name';
+                break;
+            case 'customer':
+                $orderBy = 'c.name';
+                break;
+            default:
+                $orderBy = 'a.' . $orderBy;
+                break;
         }
+
+        $qb->addOrderBy($orderBy, $query->getOrder());
 
         $where = $qb->expr()->andX();
 
@@ -237,6 +308,39 @@ class ActivityRepository extends EntityRepository
 
         if ($where->count() > 0) {
             $qb->andWhere($where);
+        }
+
+        $this->addPermissionCriteria($qb, $query->getCurrentUser());
+
+        if ($query->hasSearchTerm()) {
+            $searchAnd = $qb->expr()->andX();
+            $searchTerm = $query->getSearchTerm();
+
+            foreach ($searchTerm->getSearchFields() as $metaName => $metaValue) {
+                $qb->leftJoin('a.meta', 'meta');
+                $searchAnd->add(
+                    $qb->expr()->andX(
+                        $qb->expr()->eq('meta.name', ':metaName'),
+                        $qb->expr()->like('meta.value', ':metaValue')
+                    )
+                );
+                $qb->setParameter('metaName', $metaName);
+                $qb->setParameter('metaValue', '%' . $metaValue . '%');
+            }
+
+            if ($searchTerm->hasSearchTerm()) {
+                $searchAnd->add(
+                    $qb->expr()->orX(
+                        $qb->expr()->like('a.name', ':searchTerm'),
+                        $qb->expr()->like('a.comment', ':searchTerm')
+                    )
+                );
+                $qb->setParameter('searchTerm', '%' . $searchTerm->getSearchTerm() . '%');
+            }
+
+            if ($searchAnd->count() > 0) {
+                $qb->andWhere($searchAnd);
+            }
         }
 
         return $qb;

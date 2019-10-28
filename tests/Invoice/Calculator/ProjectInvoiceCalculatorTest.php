@@ -16,7 +16,7 @@ use App\Entity\Project;
 use App\Entity\Timesheet;
 use App\Entity\User;
 use App\Invoice\Calculator\ProjectInvoiceCalculator;
-use App\Model\InvoiceModel;
+use App\Invoice\InvoiceModel;
 use App\Repository\Query\InvoiceQuery;
 use DateTime;
 
@@ -129,16 +129,6 @@ class ProjectInvoiceCalculatorTest extends AbstractCalculatorTest
         $this->assertEquals(2032.74, $entries[1]->getRate());
         $this->assertEquals(84, $entries[2]->getRate());
         self::assertEquals(2521.12, $entries[0]->getRate() + $entries[1]->getRate() + $entries[2]->getRate());
-    }
-
-    public function testDescriptionByTimesheet()
-    {
-        $this->assertDescription(new ProjectInvoiceCalculator(), false, false);
-    }
-
-    public function testDescriptionByActivity()
-    {
-        $this->assertDescription(new ProjectInvoiceCalculator(), false, true);
     }
 
     public function testDescriptionByProject()

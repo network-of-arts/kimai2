@@ -13,6 +13,7 @@ use App\Entity\Activity;
 use App\Entity\Customer;
 use App\Entity\Project;
 use App\Entity\User;
+use App\Tests\Mocks\ActivityTestMetaFieldSubscriberMock;
 use Symfony\Bundle\FrameworkBundle\Client;
 use Symfony\Component\HttpFoundation\Response;
 
@@ -110,9 +111,9 @@ class ActivityControllerTest extends APIControllerBaseTest
         $this->assertNotEmpty($result);
         $this->assertEquals(5, count($result));
         $this->assertStructure($result[0], false);
-        $this->assertEquals(1, $result[2]['project']);
+        $this->assertEquals(1, $result[4]['project']);
         $this->assertEquals(2, $result[3]['project']);
-        $this->assertEquals(2, $result[4]['project']);
+        $this->assertEquals(2, $result[2]['project']);
     }
 
     public function testGetEntity()
@@ -161,6 +162,20 @@ class ActivityControllerTest extends APIControllerBaseTest
         $this->assertEquals(Response::HTTP_FORBIDDEN, $response->getStatusCode());
         $json = json_decode($response->getContent(), true);
         $this->assertEquals('User cannot create activities', $json['message']);
+    }
+
+    public function testPostActionWithInvalidData()
+    {
+        $client = $this->getClientForAuthenticatedUser(User::ROLE_ADMIN);
+        $data = [
+            'name' => 'foo',
+            'project' => 100,
+            'unexpected' => 'foo-bar',
+            'visible' => true
+        ];
+        $this->request($client, '/api/activities', 'POST', [], json_encode($data));
+        $response = $client->getResponse();
+        $this->assertApiCallValidationError($response, ['project'], true);
     }
 
     public function testPatchAction()
@@ -217,6 +232,54 @@ class ActivityControllerTest extends APIControllerBaseTest
         $response = $client->getResponse();
         $this->assertEquals(400, $response->getStatusCode());
         $this->assertApiCallValidationError($response, ['project']);
+    }
+
+    public function testMetaActionThrowsNotFound()
+    {
+        $this->assertEntityNotFoundForPatch(User::ROLE_ADMIN, '/api/activities/42/meta', []);
+    }
+
+    public function testMetaActionThrowsExceptionOnMissingName()
+    {
+        return $this->assertExceptionForPatchAction(User::ROLE_ADMIN, '/api/activities/1/meta', ['value' => 'X'], [
+            'code' => 400,
+            'message' => 'Parameter "name" of value "NULL" violated a constraint "This value should not be null."'
+        ]);
+    }
+
+    public function testMetaActionThrowsExceptionOnMissingValue()
+    {
+        return $this->assertExceptionForPatchAction(User::ROLE_ADMIN, '/api/activities/1/meta', ['name' => 'X'], [
+            'code' => 400,
+            'message' => 'Parameter "value" of value "NULL" violated a constraint "This value should not be null."'
+        ]);
+    }
+
+    public function testMetaActionThrowsExceptionOnMissingMetafield()
+    {
+        return $this->assertExceptionForPatchAction(User::ROLE_ADMIN, '/api/activities/1/meta', ['name' => 'X', 'value' => 'Y'], [
+            'code' => 500,
+            'message' => 'Unknown meta-field requested'
+        ]);
+    }
+
+    public function testMetaAction()
+    {
+        $client = $this->getClientForAuthenticatedUser(User::ROLE_ADMIN);
+        $client->getContainer()->get('event_dispatcher')->addSubscriber(new ActivityTestMetaFieldSubscriberMock());
+
+        $data = [
+            'name' => 'metatestmock',
+            'value' => 'another,testing,bar'
+        ];
+        $this->request($client, '/api/activities/1/meta', 'PATCH', [], json_encode($data));
+
+        $this->assertTrue($client->getResponse()->isSuccessful());
+
+        $em = $client->getContainer()->get('doctrine.orm.entity_manager');
+        /** @var Activity $activity */
+        $activity = $em->getRepository(Activity::class)->find(1);
+        $this->assertEquals('another,testing,bar', $activity->getMetaField('metatestmock')->getValue());
     }
 
     protected function assertStructure(array $result, $full = true)
