@@ -339,7 +339,10 @@ class ConfigurationTest extends TestCase
                     'userDnAttribute' => 'member',
                     'groups' => [],
                 ],
-            ]
+            ],
+            'export' => [
+                'pdf' => [],
+            ],
         ];
 
         $this->assertConfig($this->getMinConfig(), $fullDefaultConfig);
