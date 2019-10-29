@@ -19,12 +19,6 @@ matrix:
       sudo: required
       services:
         - mysql
-    - stage: Code coverage
-      php: '7.3'
-      env: CODECOVERAGE=1 DB=sqlite
-      after_success:
-          - if [[ $CODECOVERAGE == 1 ]]; then bash <(curl -s https://codecov.io/bash); fi
-
 before_install:
   - composer self-update
   - php -i
