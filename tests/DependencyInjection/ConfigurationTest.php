@@ -340,9 +340,7 @@ class ConfigurationTest extends TestCase
                     'groups' => [],
                 ],
             ],
-            'export' => [
-                'pdf' => [],
-            ],
+            'export' => [],
         ];
 
         $this->assertConfig($this->getMinConfig(), $fullDefaultConfig);
