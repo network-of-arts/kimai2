@@ -24,7 +24,7 @@ security:
 
             guard:
                 authenticators:
-                    - App\Security\TokenAuthenticator
+                    - App\Security\JwTokenAuthenticator
 
             remember_me:
                 secret:   '%kernel.secret%'
@@ -34,14 +34,14 @@ security:
             # activate all configured user provider
             provider: chain_provider
 
-            form_login:
-                check_path: fos_user_security_check
-                login_path: fos_user_security_login
-                csrf_token_generator: security.csrf.token_manager
+            #form_login:
+            #    check_path: fos_user_security_check
+            #    login_path: fos_user_security_login
+            #    csrf_token_generator: security.csrf.token_manager
 
-            logout:
-                path: fos_user_security_logout
-                target: homepage
+            #logout:
+            #    path: fos_user_security_logout
+            #    target: homepage
 
     access_decision_manager:
         strategy: unanimous
