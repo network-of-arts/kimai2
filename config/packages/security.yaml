@@ -19,12 +19,12 @@ security:
         api:
             pattern: ^/api
             user_checker: App\Security\UserChecker
-                anonymous: true
-                stateless: false
+            anonymous: true
+            stateless: false
 
             guard:
                 authenticators:
-                    - App\Security\JwTokenAuthenticator
+                    - App\Security\TokenAuthenticator
 
             remember_me:
                 secret:   '%kernel.secret%'
