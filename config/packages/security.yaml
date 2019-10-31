@@ -16,15 +16,15 @@ security:
             pattern: ^/(_(profiler|wdt)|css|images|js)/
             security: false
 
-        api:
-            pattern: ^/api
+        secured_area:
+            pattern: ^/(?!api)
             user_checker: App\Security\UserChecker
             anonymous: true
             stateless: false
 
             guard:
                 authenticators:
-                    - App\Security\TokenAuthenticator
+                    - App\Security\JwTokenAuthenticator
 
             remember_me:
                 secret:   '%kernel.secret%'
@@ -43,15 +43,15 @@ security:
                 path: fos_user_security_logout
                 target: homepage
 
-        secured_area:
-            pattern: ^/(?!api)
+        api:
+            pattern: ^/api
             user_checker: App\Security\UserChecker
             anonymous: true
             stateless: false
 
             guard:
                 authenticators:
-                    - App\Security\JwTokenAuthenticator
+                    - App\Security\TokenAuthenticator
 
             remember_me:
                 secret:   '%kernel.secret%'
