@@ -11,16 +11,15 @@ namespace App\Configuration;
 
 class ExportConfiguration implements SystemBundleConfiguration
 {
-
     use StringAccessibleConfigTrait;
 
-    public function getPrefix() : string
+    public function getPrefix(): string
     {
         return 'export';
     }
 
-    public function doDisplayCostOnPdf() : bool
+    public function doDisplayCostOnPdf(): bool
     {
-        return (bool)$this->find('pdf.display_cost');
+        return (bool) $this->find('pdf.display_cost');
     }
 }

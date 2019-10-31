@@ -1,6 +1,20 @@
 version: '3.4'
 
 services:
+    mysql_kimai:
+        image: mysql:5.7
+        volumes:
+            - ./mysql:/var/lib/mysql
+        command: --default-storage-engine innodb
+        ports:
+            - 3333:3306
+        environment:
+            - MYSQL_DATABASE=kimai
+            - MYSQL_USER=root
+            - MYSQL_PASSWORD=root
+            - MYSQL_ROOT_PASSWORD=root
+            - MYSQL_ROOT_HOST=%
+
     apache_kimai:
         image: hub.dev.noa-world.ch:443/apache-dev-72
         environment:
@@ -17,16 +31,3 @@ services:
         depends_on:
             - mysql_kimai
 
-    mysql_kimai:
-        image: mysql:5.7
-        volumes:
-            - ./mysql:/var/lib/mysql
-        command: --default-storage-engine innodb
-        ports:
-            - 3333:3306
-        environment:
-            - MYSQL_DATABASE=kimai
-            - MYSQL_USER=root
-            - MYSQL_PASSWORD=root
-            - MYSQL_ROOT_PASSWORD=root
-            - MYSQL_ROOT_HOST=%

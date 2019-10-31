@@ -71,9 +71,9 @@ trait RendererTrait
 
             if (!isset($summary[$id])) {
                 $summary[$id] = [
-                    'duration'  => 0,
+                    'duration' => 0,
                     'customers' => [],
-                    'projects'  => [],
+                    'projects' => [],
                 ];
             }
 

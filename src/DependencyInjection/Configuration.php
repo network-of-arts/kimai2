@@ -40,8 +40,8 @@ class Configuration implements ConfigurationInterface
                     ->isRequired()
                     ->validate()
             ->ifTrue(function ($value) {
-                            return !file_exists($value);
-                        })
+                return !file_exists($value);
+            })
             ->thenInvalid('Data directory does not exist')
             ->end()
             ->end()
@@ -49,8 +49,8 @@ class Configuration implements ConfigurationInterface
             ->isRequired()
             ->validate()
             ->ifTrue(function ($value) {
-                            return !file_exists($value);
-                        })
+                return !file_exists($value);
+            })
             ->thenInvalid('Plugin directory does not exist')
             ->end()
             ->end()

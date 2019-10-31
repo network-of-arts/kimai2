@@ -21,7 +21,6 @@ use Twig\Environment;
 
 final class PDFRenderer implements RendererInterface
 {
-
     use RendererTrait;
 
     /**
@@ -42,9 +41,9 @@ final class PDFRenderer implements RendererInterface
     private $exportConfiguration;
 
     /**
-     * @param Environment         $twig
+     * @param Environment $twig
      * @param UserDateTimeFactory $dateTime
-     * @param HtmlToPdfConverter  $converter
+     * @param HtmlToPdfConverter $converter
      */
     public function __construct(
         Environment $twig,
@@ -59,7 +58,7 @@ final class PDFRenderer implements RendererInterface
     }
 
     /**
-     * @param Timesheet[]    $timesheets
+     * @param Timesheet[] $timesheets
      * @param TimesheetQuery $query
      * @return Response
      * @throws \Twig\Error\LoaderError
@@ -69,10 +68,10 @@ final class PDFRenderer implements RendererInterface
     public function render(array $timesheets, TimesheetQuery $query): Response
     {
         $content = $this->twig->render('export/renderer/pdf.html.twig', [
-            'entries'      => $timesheets,
-            'query'        => $query,
-            'now'          => $this->dateTime->createDateTime(),
-            'summaries'    => $this->calculateSummary($timesheets),
+            'entries' => $timesheets,
+            'query' => $query,
+            'now' => $this->dateTime->createDateTime(),
+            'summaries' => $this->calculateSummary($timesheets),
             'user_summary' => $this->calculateUserSummary($timesheets),
             'display_cost' => $this->exportConfiguration->doDisplayCostOnPdf(),
         ]);
@@ -82,8 +81,10 @@ final class PDFRenderer implements RendererInterface
         $response = new Response($content);
 
         $disposition =
-            $response->headers->makeDisposition(ResponseHeaderBag::DISPOSITION_INLINE,
-                'kimai-export.pdf');
+            $response->headers->makeDisposition(
+                ResponseHeaderBag::DISPOSITION_INLINE,
+                'kimai-export.pdf'
+            );
 
         $response->headers->set('Content-Type', 'application/pdf');
         $response->headers->set('Content-Disposition', $disposition);
