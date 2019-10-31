@@ -7,6 +7,7 @@ use Lcobucci\JWT\Parser;
 use Lcobucci\JWT\Signer\Rsa\Sha256;
 use Lcobucci\JWT\ValidationData;
 use Symfony\Component\HttpFoundation\JsonResponse;
+use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Security\Core\Authentication\Token\TokenInterface;
@@ -41,6 +42,14 @@ class JwTokenAuthenticator extends AbstractGuardAuthenticator
      */
     public const APP_HOST = 'APP_HOST';
     /**
+     * @var string key of application protocol
+     */
+    public const        APP_PROTO = 'APP_PROTO';
+    /**
+     * @var string role for kimai user
+     */
+    public const        ROLE_APP_KIMAI = 'ROLE_APP_KIMAI';
+    /**
      * @var string public key for decoding
      */
     public const JWT_PUBLIC_KEY = <<<KEY
@@ -54,10 +63,6 @@ V6L11BWkpzGXSW4Hv43qa+GSYOD2QU68Mb59oSk2OB+BtOLpJofmbGEGgvmwyCI9
 MwIDAQAB
 -----END PUBLIC KEY-----
 KEY;
-    /**
-     * @var string role for kimai user
-     */
-    public const ROLE_APP_KIMAI = 'ROLE_APP_KIMAI';
 
     /**
      * @param Request $request
@@ -161,7 +166,13 @@ KEY;
             // 'message' => strtr($exception->getMessageKey(), $exception->getMessageData())
         ];
 
-        return new JsonResponse($data, Response::HTTP_FORBIDDEN);
+        $url = sprintf('%s://portal.%s.com/public/home',
+            $_ENV[self::APP_PROTO],
+            $_ENV[self::APP_HOST]
+        );
+
+        return new RedirectResponse($url,
+            301);
     }
 
     /**
@@ -173,11 +184,13 @@ KEY;
         Request $request,
         AuthenticationException $authException = null
     ) {
-        $data = [
-            'message' => 'Authentication required, missing Jwt token',
-        ];
+        $url = sprintf('%s://portal.%s.com/public/home',
+            $_ENV[self::APP_PROTO],
+            $_ENV[self::APP_HOST]
+        );
 
-        return new JsonResponse($data, Response::HTTP_UNAUTHORIZED);
+        return new RedirectResponse($url,
+            301);
     }
 
     /**
