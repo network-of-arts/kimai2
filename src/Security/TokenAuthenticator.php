@@ -49,13 +49,13 @@ class TokenAuthenticator extends AbstractGuardAuthenticator
             return false;
         }
 
-        if (!$request->cookies->has(JwTokenAuthenticator::JWT_COOKIE_NAME)) {
-            return false;
-        }
-
         if (strpos($request->getRequestUri(), '/api/') === 0) {
             // javascript requests can set a header to disable this authenticator and use the existing session
             return !$request->headers->has(self::HEADER_JAVASCRIPT);
+        }
+
+        if (!$request->cookies->has(JwTokenAuthenticator::JWT_COOKIE_NAME)) {
+            return false;
         }
 
         return false;

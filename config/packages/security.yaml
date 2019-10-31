@@ -44,7 +44,7 @@ security:
                 target: homepage
 
         secured_area:
-            pattern: ^/
+            pattern: ^/(?!api)
             user_checker: App\Security\UserChecker
             anonymous: true
             stateless: false
