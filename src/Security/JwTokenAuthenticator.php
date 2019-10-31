@@ -1,5 +1,13 @@
 <?php
+
 declare(strict_types=1);
+
+/*
+ * This file is part of the Kimai time-tracking app.
+ *
+ * For the full copyright and license information, please view the LICENSE
+ * file that was distributed with this source code.
+ */
 
 namespace App\Security;
 
@@ -20,11 +28,9 @@ use Symfony\Component\Security\Guard\AbstractGuardAuthenticator;
  * @name \App\Security\JwTokenAuthenticator
  * @author     Sergey Kashuba <sk@networkofarts.com>
  * @copyright  Network of Arts AG
- *
  */
 class JwTokenAuthenticator extends AbstractGuardAuthenticator
 {
-
     /**
      * @var string the default cookie name containing the jwt token
      */
@@ -126,8 +132,10 @@ KEY;
     {
         $jwtToken = (new Parser())->parse($credentials['token']);
 
-        return in_array(self::ROLE_APP_KIMAI,
-            $jwtToken->getClaim(self::CLAIM_ROLES));
+        return in_array(
+            self::ROLE_APP_KIMAI,
+            $jwtToken->getClaim(self::CLAIM_ROLES)
+        );
     }
 
     /**
@@ -166,13 +174,16 @@ KEY;
             // 'message' => strtr($exception->getMessageKey(), $exception->getMessageData())
         ];
 
-        $url = sprintf('%s://portal.%s.com/public/home',
+        $url = sprintf(
+            '%s://portal.%s.com/public/home',
             $_ENV[self::APP_PROTO],
             $_ENV[self::APP_HOST]
         );
 
-        return new RedirectResponse($url,
-            301);
+        return new RedirectResponse(
+            $url,
+            301
+        );
     }
 
     /**
@@ -184,13 +195,16 @@ KEY;
         Request $request,
         AuthenticationException $authException = null
     ) {
-        $url = sprintf('%s://portal.%s.com/public/home',
+        $url = sprintf(
+            '%s://portal.%s.com/public/home',
             $_ENV[self::APP_PROTO],
             $_ENV[self::APP_HOST]
         );
 
-        return new RedirectResponse($url,
-            301);
+        return new RedirectResponse(
+            $url,
+            301
+        );
     }
 
     /**
