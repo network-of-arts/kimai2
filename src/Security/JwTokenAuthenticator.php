@@ -75,6 +75,14 @@ KEY;
      */
     public function supports(Request $request)
     {
+        if (strpos($request->getRequestUri(), '/api/doc') === 0) {
+            return false;
+        }
+
+        if (strpos($request->getRequestUri(), '/api/') === 0) {
+            return false;
+        }
+
         return $request->cookies->has(self::JWT_COOKIE_NAME);
     }
 
