@@ -19,6 +19,8 @@ services:
         image: hub.dev.noa-world.ch:443/apache-dev-72
         environment:
             - APP_ENV=dev
+            - APP_HOST=localhost
+            - APP_PROTO=http
             - JWT_PUBLIC_KEY=SecretKeyChangeOnProd
             - DATABASE_URL=mysql://root:root@mysql_kimai/kimai
             - ADMINMAIL=kimai@example.com
