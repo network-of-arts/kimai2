@@ -1,5 +1,6 @@
 <html>
 <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
     <style>
         body {font-family: sans-serif;
             font-size: 10pt;
@@ -28,7 +29,6 @@
             background-color: #ececec;
             text-align: center;
             border: 0.1mm solid #000000;
-            font-variant: small-caps;
         }
         .items td.totals {
             font-weight: bold;
@@ -69,7 +69,9 @@ mpdf-->
         <td>{{ 'label.customer'|trans }}</td>
         <td>{{ 'label.project'|trans }}</td>
         <td>{{ 'label.duration'|trans }}</td>
-        <td>{{ 'label.rate'|trans }}</td>
+        {% if display_cost %}
+            <td>{{ 'label.rate'|trans }}</td>
+        {% endif %}
     </tr>
     </thead>
     <tbody>
@@ -87,7 +89,9 @@ mpdf-->
                 <tr class="summary">
                     <td colspan="2"></td>
                     <td class="totals duration">{{ customerDuration|duration }}</td>
-                    <td class="totals cost">{{ customerRate|money(customerCurrency) }}</td>
+                    {% if display_cost == true %}
+                        <td class="totals cost">{{ customerRate|money(customerCurrency) }}</td>
+                    {% endif %}
                 </tr>
             {% set customerCurrency = summary.currency %}
             {% set customer = summary.customer %}
@@ -99,7 +103,9 @@ mpdf-->
             <td>{{ summary.customer }}</td>
             <td>{{ summary.project }}</td>
             <td class="duration">{{ summary.duration|duration }}</td>
-            <td class="cost">{{ summary.rate|money(summary.currency) }}</td>
+            {% if display_cost == true %}
+                <td class="cost">{{ summary.rate|money(summary.currency) }}</td>
+            {% endif %}
         </tr>
         {% set customerDuration = customerDuration + summary.duration %}
         {% set customerRate = customerRate + summary.rate %}
@@ -109,7 +115,9 @@ mpdf-->
     <tr class="summary">
         <td colspan="2"></td>
         <td class="totals duration">{{ customerDuration|duration }}</td>
-        <td class="totals cost">{{ customerRate|money(customerCurrency) }}</td>
+        {% if display_cost == true %}
+            <td class="totals cost">{{ customerRate|money(customerCurrency) }}</td>
+        {% endif %}
     </tr>
     {% endif %}
     </tbody>
@@ -117,9 +125,83 @@ mpdf-->
 
 <pagebreak>
 
-<h3>{{ 'export.full_list'|trans }}</h3>
+    <h3>{{ 'export.user_summary_by_customer'|trans }}</h3>
+    <table class="items" width="100%" style="font-size: 9pt; border-collapse: collapse; " cellpadding="8">
+        <thead>
+        <tr>
+            <td width="80%">{{ 'label.customer'|trans }}</td>
+            <td>{{ 'label.duration'|trans }}</td>
+        </tr>
+        </thead>
+        {% set totalDuration = 0 %}
+        {% for username, summary in user_summary %}}
+            <tbody>
+            <tr>
+                <td style="text-align: left; background-color: #ececec">
+                    <b>{{ username }}</b>
+                </td>
+                <td style="background-color: #ececec">&nbsp;</td>
+            </tr>
+            {% set index = 0 %}
+            {% for customer, duration in summary.customers %}
+                <tr class="{{ cycle(['odd', 'even'], index) }}">
+                    <td>{{ customer }}</td>
+                    <td class="duration">{{ duration|duration }}</td>
+                </tr>
+            {% endfor %}
+            {% set totalDuration = totalDuration + summary.duration %}
+            {% set index = index + 1 %}
+            </tbody>
+        {% endfor %}
+        <tbody>
+        <tr class="summary">
+            <td></td>
+            <td class="totals duration">{{ totalDuration|duration }}</td>
+        </tr>
+        </tbody>
+    </table>
 
-{% set duration = 0 %}
+    <h3>{{ 'export.user_summary_by_project'|trans }}</h3>
+    <table class="items" width="100%" style="font-size: 9pt; border-collapse: collapse; " cellpadding="8">
+        <thead>
+        <tr>
+            <td width="80%">{{ 'label.project'|trans }}</td>
+            <td>{{ 'label.duration'|trans }}</td>
+        </tr>
+        </thead>
+        {% set totalDuration = 0 %}
+        {% for username, summary in user_summary %}}
+            <tbody>
+            <tr>
+                <td style="text-align: left; background-color: #ececec">
+                    <b>{{ username }}</b>
+                </td>
+                <td style="background-color: #ececec">&nbsp;</td>
+            </tr>
+            {% set index = 0 %}
+            {% for customer, duration in summary.projects %}
+                <tr class="{{ cycle(['odd', 'even'], index) }}">
+                    <td>{{ customer }}</td>
+                    <td class="duration">{{ duration|duration }}</td>
+                </tr>
+            {% endfor %}
+            {% set totalDuration = totalDuration + summary.duration %}
+            {% set index = index + 1 %}
+            </tbody>
+        {% endfor %}
+        <tbody>
+        <tr class="summary">
+            <td></td>
+            <td class="totals duration">{{ totalDuration|duration }}</td>
+        </tr>
+        </tbody>
+    </table>
+
+    <pagebreak>
+
+        <h3>{{ 'export.full_list'|trans }}</h3>
+
+        {% set duration = 0 %}
 {% set rate = 0 %}
 {% set currency = false %}
 <table class="items" width="100%" style="font-size: 9pt; border-collapse: collapse; " cellpadding="8">
@@ -128,7 +210,9 @@ mpdf-->
         <td>{{ 'label.date'|trans }}</td>
         <td width="">{{ 'label.description'|trans }}</td>
         <td>{{ 'label.duration'|trans }}</td>
-        <td>{{ 'label.rate'|trans }}</td>
+        {% if display_cost == true %}
+            <td>{{ 'label.rate'|trans }}</td>
+        {% endif %}
     </tr>
     </thead>
     <tbody>
@@ -157,13 +241,17 @@ mpdf-->
                 {% endif %}
             </td>
             <td class="duration">{{ entry.duration|duration }}</td>
-            <td class="cost">{{ entry.rate|money(entry.project.customer.currency) }}</td>
+            {% if display_cost == true %}
+                <td class="cost">{{ entry.rate|money(entry.project.customer.currency) }}</td>
+            {% endif %}
         </tr>
     {% endfor %}
     <tr class="summary">
         <td colspan="2"></td>
         <td class="totals duration">{{ duration|duration }}</td>
-        <td class="totals cost">{{ rate|money(currency) }}</td>
+        {% if display_cost == true %}
+            <td class="totals cost">{{ rate|money(currency) }}</td>
+        {% endif %}
     </tr>
     </tbody>
 </table>

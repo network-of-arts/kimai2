@@ -49,6 +49,10 @@ services:
         arguments:
             $settings: '%kimai.timesheet%'
 
+    App\Configuration\ExportConfiguration:
+        arguments:
+            $settings: "%kimai.export%"
+
     App\Configuration\CalendarConfiguration:
         arguments:
             $settings: '%kimai.calendar%'

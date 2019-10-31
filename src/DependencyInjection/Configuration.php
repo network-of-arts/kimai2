@@ -39,31 +39,32 @@ class Configuration implements ConfigurationInterface
                 ->scalarNode('data_dir')
                     ->isRequired()
                     ->validate()
-                        ->ifTrue(function ($value) {
+            ->ifTrue(function ($value) {
                             return !file_exists($value);
                         })
-                        ->thenInvalid('Data directory does not exist')
-                    ->end()
-                ->end()
-                ->scalarNode('plugin_dir')
-                    ->isRequired()
-                    ->validate()
-                        ->ifTrue(function ($value) {
+            ->thenInvalid('Data directory does not exist')
+            ->end()
+            ->end()
+            ->scalarNode('plugin_dir')
+            ->isRequired()
+            ->validate()
+            ->ifTrue(function ($value) {
                             return !file_exists($value);
                         })
-                        ->thenInvalid('Plugin directory does not exist')
-                    ->end()
-                ->end()
-                ->append($this->getUserNode())
-                ->append($this->getTimesheetNode())
-                ->append($this->getInvoiceNode())
-                ->append($this->getLanguagesNode())
-                ->append($this->getCalendarNode())
-                ->append($this->getThemeNode())
-                ->append($this->getIndustryNode())
-                ->append($this->getDashboardNode())
-                ->append($this->getWidgetsNode())
-                ->append($this->getDefaultsNode())
+            ->thenInvalid('Plugin directory does not exist')
+            ->end()
+            ->end()
+            ->append($this->getExportNode())
+            ->append($this->getUserNode())
+            ->append($this->getTimesheetNode())
+            ->append($this->getInvoiceNode())
+            ->append($this->getLanguagesNode())
+            ->append($this->getCalendarNode())
+            ->append($this->getThemeNode())
+            ->append($this->getIndustryNode())
+            ->append($this->getDashboardNode())
+            ->append($this->getWidgetsNode())
+            ->append($this->getDefaultsNode())
                 ->append($this->getPermissionsNode())
                 ->append($this->getLdapNode())
             ->end()
@@ -192,6 +193,25 @@ class Configuration implements ConfigurationInterface
                 ->end()
             ->end()
         ;
+
+        return $node;
+    }
+
+    protected function getExportNode()
+    {
+        $builder = new TreeBuilder('export');
+        $node = $builder->getRootNode();
+
+        $node
+            ->addDefaultsIfNotSet()
+            ->children()
+            ->arrayNode('pdf')
+            ->children()
+            ->booleanNode('display_cost')
+            ->defaultValue(true)
+            ->end()
+            ->end()
+            ->end();
 
         return $node;
     }

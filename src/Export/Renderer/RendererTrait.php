@@ -60,4 +60,47 @@ trait RendererTrait
 
         return $summary;
     }
+
+    protected function calculateUserSummary(array $timesheets)
+    {
+        $summary = [];
+
+        foreach ($timesheets as $timesheet) {
+            $id = $timesheet->getUser()
+                            ->getAlias();
+
+            if (!isset($summary[$id])) {
+                $summary[$id] = [
+                    'duration'  => 0,
+                    'customers' => [],
+                    'projects'  => [],
+                ];
+            }
+
+            $customerName = $timesheet->getProject()
+                                      ->getCustomer()
+                                      ->getName();
+            $projectName = sprintf(
+                '%s / %s',
+                $customerName,
+                $timesheet->getProject()
+                          ->getName()
+            );
+
+            if (!isset($summary[$id]['customers'][$customerName])) {
+                $summary[$id]['customers'][$customerName] = 0;
+            }
+            if (!isset($summary[$id]['projects'][$projectName])) {
+                $summary[$id]['projects'][$projectName] = 0;
+            }
+
+            $summary[$id]['duration'] += $timesheet->getDuration();
+            $summary[$id]['customers'][$customerName] += $timesheet->getDuration();
+            $summary[$id]['projects'][$projectName] += $timesheet->getDuration();
+        }
+
+        asort($summary);
+
+        return $summary;
+    }
 }

@@ -50,29 +50,46 @@ kimai:
                 duration: 0
                 mode: default
 
-#       # If you want to apply different hourly rates for specific weekdays, you can uncomment the "rates" configuration.
-#       # The "weekend" rule will add 50% to each timesheet entry that will be recorded on "saturdays" or "sundays".
-#       # See documentation at: https://www.kimai.org/documentation/timesheet.html#rate-calculation
-#        rates:
-#            weekend:
-#                days: ['saturday','sunday']
-#                factor: 1.5
-#
-#        # If you want to limit the max. active entries per user, you can do it here.
-#        # The soft_limit is used as theme setting and displays a warning color if the user has reached X active recordings
-#        # The hard_limit is used to detect how many active records are allowed per user:
-#        # - by default a user can only have one active time-record: it is automatically stopped when a new one is started
-#        # - when hard_limit is > 1 and the user is trying to start a new entry after reaching the limit, a warning is shown
-#        #   and the user has to stop an active entry first
-#        active_entries:
-#            soft_limit: 1
-#            hard_limit: 3
-#
-#        # Rules that define timesheet validation and behaviour
-#        rules:
-#            # whether records in the future can be created
-#            allow_future_times: true
-# --------------------------------------------------------------------------------
+        # If you want to apply different hourly rates for specific weekdays, you can uncomment the "rates" configuration.
+        # The "weekend" rule will add 50% to each timesheet entry that will be recorded on "saturdays" or "sundays".
+        # See documentation about rate rules: https://www.kimai.org/documentation/timesheet.html#rate-calculation
+        # rates:
+        #    weekend:
+        #        days: ['saturday','sunday']
+        #        factor: 1.5
+
+        # If you want to limit the max. active entries per user, you can do it here.
+        #
+        # The soft_limit is used as theme setting and displays a warning color if the user has at least X active recordings
+        #
+        # The hard_limit is used to detect how many active records are allowed per user:
+        #   By default a user can only have one active time-record. The first one is stopped when the new one starts.
+        #   When hard_limit is > 1: as soon as the limit is reached and warning is shown and the user has to stop one active entry.
+        active_entries:
+            soft_limit: 1
+            hard_limit: 3
+
+        # Rules that define the Timesheet validation and behaviour
+        rules:
+            # whether records in the future can be created
+            allow_future_times: true
+
+    # --------------------------------------------------------------------------------
+    # All configs related to timesheet and record management
+    export:
+
+        pdf:
+            # display the "cost" column within the PDF export
+            display_cost: true
+
+
+    # --------------------------------------------------------------------------------
+    # Invoice management
+    #invoice:
+    #    # all files in these directories will be used as invoice documents (if supported by a renderer)
+    #    documents:
+    #        - 'var/invoices/'
+    #        - 'templates/invoice/renderer/'
 
 
 # --------------------------------------------------------------------------------
