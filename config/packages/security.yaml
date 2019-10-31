@@ -16,6 +16,18 @@ security:
             pattern: ^/(_(profiler|wdt)|css|images|js)/
             security: false
 
+        api:
+            pattern: ^/api
+            user_checker: App\Security\UserChecker
+            anonymous: true
+            stateless: false
+
+            guard:
+                authenticators:
+                    - App\Security\TokenAuthenticator
+
+            provider: chain_provider
+
         secured_area:
             pattern: ^/
             user_checker: App\Security\UserChecker

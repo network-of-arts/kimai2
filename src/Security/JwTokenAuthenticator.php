@@ -14,7 +14,6 @@ namespace App\Security;
 use Lcobucci\JWT\Parser;
 use Lcobucci\JWT\Signer\Rsa\Sha256;
 use Lcobucci\JWT\ValidationData;
-use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -76,15 +75,7 @@ KEY;
      */
     public function supports(Request $request)
     {
-        if (strpos($request->getRequestUri(), '/api/doc') === 0) {
-            return false;
-        }
-
-        if (strpos($request->getRequestUri(), '/api/') === 0) {
-            return $request->cookies->has(self::JWT_COOKIE_NAME);
-        }
-
-        return true;
+        return $request->cookies->has(self::JWT_COOKIE_NAME);
     }
 
     /**
@@ -155,18 +146,12 @@ KEY;
     /**
      * @param Request $request
      * @param AuthenticationException $exception
-     * @return null|JsonResponse|Response
+     * @return RedirectResponse
      */
     public function onAuthenticationFailure(
         Request $request,
         AuthenticationException $exception
     ) {
-        if (!$request->cookies->has(self::JWT_COOKIE_NAME)) {
-            return new JsonResponse(
-                ['message' => 'Authentication required, missing Jwt token'],
-                Response::HTTP_FORBIDDEN
-            );
-        }
         $data = [
             'message' => 'Invalid token'
             // security measure: do not leak real reason (unknown user, invalid credentials ...)
@@ -189,7 +174,7 @@ KEY;
     /**
      * @param Request $request
      * @param AuthenticationException|null $authException
-     * @return JsonResponse|Response
+     * @return RedirectResponse|Response
      */
     public function start(
         Request $request,
