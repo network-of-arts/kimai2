@@ -99,7 +99,7 @@ KEY;
     }
 
     /**
-     * @param array                 $credentials
+     * @param array $credentials
      * @param UserProviderInterface $userProvider
      * @return null|UserInterface
      */
@@ -124,7 +124,7 @@ KEY;
     }
 
     /**
-     * @param array         $credentials
+     * @param array $credentials
      * @param UserInterface $user
      * @return bool
      */
@@ -139,9 +139,9 @@ KEY;
     }
 
     /**
-     * @param Request        $request
+     * @param Request $request
      * @param TokenInterface $token
-     * @param string         $providerKey
+     * @param string $providerKey
      * @return null|Response
      */
     public function onAuthenticationSuccess(
@@ -153,7 +153,7 @@ KEY;
     }
 
     /**
-     * @param Request                 $request
+     * @param Request $request
      * @param AuthenticationException $exception
      * @return null|JsonResponse|Response
      */
@@ -187,7 +187,7 @@ KEY;
     }
 
     /**
-     * @param Request                      $request
+     * @param Request $request
      * @param AuthenticationException|null $authException
      * @return JsonResponse|Response
      */
