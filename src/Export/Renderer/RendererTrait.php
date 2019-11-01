@@ -45,10 +45,15 @@ trait RendererTrait
                 ];
             }
 
+            $duration = $timesheet->getDuration();
+            if (null === $duration) {
+                $duration = 0;
+            }
+
             $summary[$id]['rate'] += $timesheet->getRate();
-            $summary[$id]['duration'] += $timesheet->getDuration();
+            $summary[$id]['duration'] += $duration;
             $summary[$id]['activities'][$activityId]['rate'] += $timesheet->getRate();
-            $summary[$id]['activities'][$activityId]['duration'] += $timesheet->getDuration();
+            $summary[$id]['activities'][$activityId]['duration'] += $duration;
         }
 
         asort($summary);
@@ -61,21 +66,25 @@ trait RendererTrait
         $summary = [];
 
         foreach ($timesheets as $timesheet) {
-            $id = $timesheet->getUser()->getAlias();
+            $id = $timesheet->getUser()
+                            ->getAlias();
 
             if (!isset($summary[$id])) {
                 $summary[$id] = [
                     'duration' => 0,
                     'customers' => [],
-                    'projects' => []
+                    'projects' => [],
                 ];
             }
 
-            $customerName = $timesheet->getProject()->getCustomer()->getName();
+            $customerName = $timesheet->getProject()
+                                      ->getCustomer()
+                                      ->getName();
             $projectName = sprintf(
                 '%s / %s',
                 $customerName,
-                $timesheet->getProject()->getName()
+                $timesheet->getProject()
+                          ->getName()
             );
 
             if (!isset($summary[$id]['customers'][$customerName])) {

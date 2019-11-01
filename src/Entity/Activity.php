@@ -50,16 +50,18 @@ class Activity implements EntityWithMetaFields
     /**
      * @var string
      *
-     * @ORM\Column(name="name", type="string", length=255, nullable=false)
+     * Do not increase length to more than 190 chars, otherwise "Index column size too large." will be triggered.
+     *
+     * @ORM\Column(name="name", type="string", length=150, nullable=false)
      * @Assert\NotBlank()
-     * @Assert\Length(min=2, max=255)
+     * @Assert\Length(min=2, max=150)
      */
     private $name;
 
     /**
      * @var string
      *
-     * @ORM\Column(name="comment", type="text", length=65535, nullable=true)
+     * @ORM\Column(name="comment", type="text", nullable=true)
      */
     private $comment;
 
@@ -136,6 +138,14 @@ class Activity implements EntityWithMetaFields
         return $this;
     }
 
+    public function isVisible(): bool
+    {
+        return $this->visible;
+    }
+
+    /**
+     * @deprecated since 1.4
+     */
     public function getVisible(): bool
     {
         return $this->visible;
@@ -168,7 +178,7 @@ class Activity implements EntityWithMetaFields
     public function getMetaField(string $name): ?MetaTableTypeInterface
     {
         foreach ($this->meta as $field) {
-            if ($field->getName() === $name) {
+            if (strtolower($field->getName()) === strtolower($name)) {
                 return $field;
             }
         }

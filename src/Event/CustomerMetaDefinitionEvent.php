@@ -10,7 +10,7 @@
 namespace App\Event;
 
 use App\Entity\Customer;
-use Symfony\Component\EventDispatcher\Event;
+use Symfony\Contracts\EventDispatcher\Event;
 
 /**
  * This event can be used, to dynamically add meta fields to customers
@@ -20,7 +20,7 @@ final class CustomerMetaDefinitionEvent extends Event
     /**
      * @var Customer
      */
-    protected $entity;
+    private $entity;
 
     public function __construct(Customer $entity)
     {

@@ -9,6 +9,9 @@
 
 namespace App\Entity;
 
+use App\Invoice\InvoiceItemInterface;
+use DateTime;
+use DateTimeZone;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
@@ -36,7 +39,7 @@ use Symfony\Component\Validator\Constraints as Assert;
  * columns={"start_time","end_time"}        => IDX_4F60C6B1502DF58741561401         => ???
  * columns={"start_time","end_time","user"} => IDX_4F60C6B1502DF587415614018D93D649 => ???
  */
-class Timesheet implements EntityWithMetaFields
+class Timesheet implements EntityWithMetaFields, InvoiceItemInterface
 {
     /**
      * @var int
@@ -48,7 +51,7 @@ class Timesheet implements EntityWithMetaFields
     private $id;
 
     /**
-     * @var \DateTime
+     * @var DateTime
      *
      * @ORM\Column(name="start_time", type="datetime", nullable=false)
      * @Assert\NotNull()
@@ -56,7 +59,7 @@ class Timesheet implements EntityWithMetaFields
     private $begin;
 
     /**
-     * @var \DateTime
+     * @var DateTime
      *
      * @ORM\Column(name="end_time", type="datetime", nullable=true)
      */
@@ -112,7 +115,7 @@ class Timesheet implements EntityWithMetaFields
     /**
      * @var string
      *
-     * @ORM\Column(name="description", type="text", length=65535, nullable=true)
+     * @ORM\Column(name="description", type="text", nullable=true)
      */
     private $description;
 
@@ -142,10 +145,10 @@ class Timesheet implements EntityWithMetaFields
      * @ORM\JoinTable(
      *  name="kimai2_timesheet_tags",
      *  joinColumns={
-     *      @ORM\JoinColumn(name="timesheet_id", referencedColumnName="id")
+     *      @ORM\JoinColumn(name="timesheet_id", referencedColumnName="id", onDelete="CASCADE")
      *  },
      *  inverseJoinColumns={
-     *      @ORM\JoinColumn(name="tag_id", referencedColumnName="id")
+     *      @ORM\JoinColumn(name="tag_id", referencedColumnName="id", onDelete="CASCADE")
      *  }
      * )
      */
@@ -188,17 +191,17 @@ class Timesheet implements EntityWithMetaFields
         }
 
         if (null !== $this->begin) {
-            $this->begin->setTimeZone(new \DateTimeZone($this->timezone));
+            $this->begin->setTimeZone(new DateTimeZone($this->timezone));
         }
 
         if (null !== $this->end) {
-            $this->end->setTimeZone(new \DateTimeZone($this->timezone));
+            $this->end->setTimeZone(new DateTimeZone($this->timezone));
         }
 
         $this->localized = true;
     }
 
-    public function getBegin(): ?\DateTime
+    public function getBegin(): ?DateTime
     {
         $this->localizeDates();
 
@@ -206,10 +209,10 @@ class Timesheet implements EntityWithMetaFields
     }
 
     /**
-     * @param \DateTime $begin
+     * @param DateTime $begin
      * @return Timesheet
      */
-    public function setBegin(\DateTime $begin): Timesheet
+    public function setBegin(DateTime $begin): Timesheet
     {
         $this->begin = $begin;
         $this->timezone = $begin->getTimezone()->getName();
@@ -217,7 +220,7 @@ class Timesheet implements EntityWithMetaFields
         return $this;
     }
 
-    public function getEnd(): ?\DateTime
+    public function getEnd(): ?DateTime
     {
         $this->localizeDates();
 
@@ -225,10 +228,10 @@ class Timesheet implements EntityWithMetaFields
     }
 
     /**
-     * @param \DateTime $end
+     * @param DateTime $end
      * @return Timesheet
      */
-    public function setEnd(?\DateTime $end): Timesheet
+    public function setEnd(?DateTime $end): Timesheet
     {
         $this->end = $end;
 
@@ -243,10 +246,10 @@ class Timesheet implements EntityWithMetaFields
     }
 
     /**
-     * @param int $duration
+     * @param int|null $duration
      * @return Timesheet
      */
-    public function setDuration($duration): Timesheet
+    public function setDuration(?int $duration): Timesheet
     {
         $this->duration = $duration;
 
@@ -256,9 +259,9 @@ class Timesheet implements EntityWithMetaFields
     /**
      * Do not rely on the results of this method for running records.
      *
-     * @return int
+     * @return int|null
      */
-    public function getDuration()
+    public function getDuration(): ?int
     {
         return $this->duration;
     }
@@ -338,10 +341,7 @@ class Timesheet implements EntityWithMetaFields
         return $this;
     }
 
-    /**
-     * @return float
-     */
-    public function getRate()
+    public function getRate(): float
     {
         return $this->rate;
     }
@@ -422,10 +422,10 @@ class Timesheet implements EntityWithMetaFields
     }
 
     /**
-     * BE WARNED: this method should NOT be used programmatically, there is very likely no reason for it!
+     * BE WARNED: this method should NOT be used.
+     * It was ONLY introduced for the command "kimai:import-v1".
      *
      * @internal
-     * @deprecated since it was introduced, only meant for the initial migration. Will be removed with 1.0.
      * @param string $timezone
      * @return Timesheet
      */
@@ -463,7 +463,7 @@ class Timesheet implements EntityWithMetaFields
     public function getMetaField(string $name): ?MetaTableTypeInterface
     {
         foreach ($this->meta as $field) {
-            if ($field->getName() === $name) {
+            if (strtolower($field->getName()) === strtolower($name)) {
                 return $field;
             }
         }

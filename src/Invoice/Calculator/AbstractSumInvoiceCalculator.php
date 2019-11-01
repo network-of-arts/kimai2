@@ -9,18 +9,19 @@
 
 namespace App\Invoice\Calculator;
 
-use App\Entity\Timesheet;
 use App\Invoice\CalculatorInterface;
+use App\Invoice\InvoiceItem;
+use App\Invoice\InvoiceItemInterface;
 
 /**
- * A calculator that sums up the timesheet records by activity.
+ * An abstract calculator that sums up the invoice item records.
  */
 abstract class AbstractSumInvoiceCalculator extends AbstractMergedCalculator implements CalculatorInterface
 {
-    abstract protected function calculateSumIdentifier(Timesheet $timesheet): string;
+    abstract protected function calculateSumIdentifier(InvoiceItemInterface $invoiceItem): string;
 
     /**
-     * @return Timesheet[]
+     * @return InvoiceItem[]
      */
     public function getEntries()
     {
@@ -29,18 +30,31 @@ abstract class AbstractSumInvoiceCalculator extends AbstractMergedCalculator imp
             return [];
         }
 
-        /** @var Timesheet[] $timesheets */
-        $timesheets = [];
+        /** @var InvoiceItem[] $invoiceItems */
+        $invoiceItems = [];
 
         foreach ($entries as $entry) {
             $id = $this->calculateSumIdentifier($entry);
-            if (!isset($timesheets[$id])) {
-                $timesheets[$id] = new Timesheet();
+
+            if (null !== $entry->getFixedRate()) {
+                $id = $id . '_fixed_' . (string) $entry->getFixedRate();
+            } else {
+                $id = $id . '_hourly_' . (string) $entry->getHourlyRate();
             }
-            $timesheet = $timesheets[$id];
-            $this->mergeTimesheets($timesheet, $entry);
+
+            if (!isset($invoiceItems[$id])) {
+                $invoiceItems[$id] = new InvoiceItem();
+            }
+            $invoiceItem = $invoiceItems[$id];
+            $this->mergeInvoiceItems($invoiceItem, $entry);
+            $this->mergeSumTimesheet($invoiceItem, $entry);
         }
 
-        return array_values($timesheets);
+        return array_values($invoiceItems);
+    }
+
+    protected function mergeSumTimesheet(InvoiceItem $invoiceItem, InvoiceItemInterface $entry)
+    {
+        // allows to set values per calculator after merging the timesheet
     }
 }

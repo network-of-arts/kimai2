@@ -2,7 +2,7 @@
 # https://symfony.com/doc/current/best_practices/configuration.html#application-related-configuration
 parameters:
     locale: en
-    app_locales: en|de|it|fr|es|ru|ar|hu|pt_BR|sv|ja|sk
+    app_locales: ar|cs|de|en|es|fr|hu|it|ja|ko|pt_BR|ru|sk|sv
 
 services:
     # default configuration for services in *this* file
@@ -85,6 +85,11 @@ services:
         arguments:
             $renderer: !tagged widget.renderer
 
+    App\Utils\Translator:
+        decorates: translator
+        arguments:
+            $localDomains: '%kimai.i18n_domains%'
+
     # ================================================================================
     # DATABASE
     # ================================================================================
@@ -134,7 +139,8 @@ services:
         arguments: ['%security.role_hierarchy.roles%']
 
     App\Security\RolePermissionManager:
-        arguments: ['%kimai.permissions%']
+        arguments:
+            $permissions: '%kimai.permissions%'
 
     # ================================================================================
     # LDAP
@@ -157,6 +163,11 @@ services:
         class:     Doctrine\ORM\EntityRepository
         factory:   ['@doctrine.orm.entity_manager', getRepository]
         arguments: ['App\Entity\User']
+
+    App\Repository\TeamRepository:
+        class:     Doctrine\ORM\EntityRepository
+        factory:   ['@doctrine.orm.entity_manager', getRepository]
+        arguments: ['App\Entity\Team']
 
     App\Repository\ActivityRepository:
         class:     Doctrine\ORM\EntityRepository

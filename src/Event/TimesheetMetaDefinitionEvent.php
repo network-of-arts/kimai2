@@ -10,7 +10,7 @@
 namespace App\Event;
 
 use App\Entity\Timesheet;
-use Symfony\Component\EventDispatcher\Event;
+use Symfony\Contracts\EventDispatcher\Event;
 
 /**
  * This event can be used, to dynamically add meta fields to timesheets
@@ -20,7 +20,7 @@ final class TimesheetMetaDefinitionEvent extends Event
     /**
      * @var Timesheet
      */
-    protected $entity;
+    private $entity;
 
     public function __construct(Timesheet $entity)
     {

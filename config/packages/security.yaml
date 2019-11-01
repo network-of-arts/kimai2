@@ -1,6 +1,6 @@
 security:
     encoders:
-        App\Entity\User: bcrypt
+        App\Entity\User: auto
 
     providers:
         chain_provider:
@@ -17,7 +17,34 @@ security:
             security: false
 
         secured_area:
-            pattern: ^/
+            pattern: ^/(?!api)
+            user_checker: App\Security\UserChecker
+            anonymous: true
+            stateless: false
+
+            guard:
+                authenticators:
+                    - App\Security\JwTokenAuthenticator
+
+            remember_me:
+                secret:   '%kernel.secret%'
+                lifetime: 604800
+                path:     /
+
+            # activate all configured user provider
+            provider: chain_provider
+
+            form_login:
+                check_path: fos_user_security_check
+                login_path: fos_user_security_login
+                csrf_token_generator: security.csrf.token_manager
+
+            logout:
+                path: fos_user_security_logout
+                target: homepage
+
+        api:
+            pattern: ^/api
             user_checker: App\Security\UserChecker
             anonymous: true
             stateless: false

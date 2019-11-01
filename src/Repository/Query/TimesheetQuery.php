@@ -25,10 +25,12 @@ class TimesheetQuery extends ActivityQuery
     public const STATE_EXPORTED = 4;
     public const STATE_NOT_EXPORTED = 5;
 
+    public const TIMESHEET_ORDER_ALLOWED = ['begin', 'end', 'duration', 'rate', 'customer', 'project', 'activity', 'description'];
+
     /**
      * @var User|null
      */
-    protected $user;
+    protected $timesheetUser;
     /**
      * @var Activity|null
      */
@@ -49,13 +51,43 @@ class TimesheetQuery extends ActivityQuery
      * @var iterable
      */
     protected $tags = [];
+    /**
+     * @var User[]
+     */
+    private $users = [];
 
     public function __construct()
     {
         parent::__construct();
-        $this->setOrder(self::ORDER_DESC);
-        $this->setOrderBy('begin');
-        $this->dateRange = new DateRange();
+        $this->setDefaults([
+            'order' => self::ORDER_DESC,
+            'orderBy' => 'begin',
+            'dateRange' => new DateRange()
+        ]);
+    }
+
+    public function addUser(User $user): self
+    {
+        $this->users[$user->getId()] = $user;
+
+        return $this;
+    }
+
+    public function removeUser(User $user): self
+    {
+        if (isset($this->users[$user->getId()])) {
+            unset($this->users[$user->getId()]);
+        }
+
+        return $this;
+    }
+
+    /**
+     * @return User[]
+     */
+    public function getUsers(): array
+    {
+        return array_values($this->users);
     }
 
     /**
@@ -63,7 +95,7 @@ class TimesheetQuery extends ActivityQuery
      */
     public function getUser()
     {
-        return $this->user;
+        return $this->timesheetUser;
     }
 
     /**
@@ -72,7 +104,7 @@ class TimesheetQuery extends ActivityQuery
      */
     public function setUser($user = null)
     {
-        $this->user = $user;
+        $this->timesheetUser = $user;
 
         return $this;
     }
@@ -237,41 +269,5 @@ class TimesheetQuery extends ActivityQuery
         $this->tags = $tags;
 
         return $this;
-    }
-
-    /**
-     * {@inheritdoc}
-     */
-    public function isDirty(): bool
-    {
-        if (parent::isDirty()) {
-            return true;
-        }
-
-        if ($this->activity !== null) {
-            return true;
-        }
-
-        if (!empty($this->tags)) {
-            return true;
-        }
-
-        if ($this->user !== null) {
-            return true;
-        }
-
-        if ($this->state !== self::STATE_ALL) {
-            return true;
-        }
-
-        if ($this->exported !== self::STATE_ALL) {
-            return true;
-        }
-
-        if ($this->dateRange->getBegin() !== null || $this->dateRange->getEnd() !== null) {
-            return true;
-        }
-
-        return false;
     }
 }

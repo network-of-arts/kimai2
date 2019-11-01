@@ -9,9 +9,11 @@
 
 namespace App\Tests\Repository;
 
+use App\Entity\User;
 use App\Repository\TimesheetRepository;
 use App\Repository\WidgetRepository;
-use App\Security\CurrentUser;
+use App\Tests\Mocks\Security\CurrentUserFactory;
+use App\Widget\Type\CompoundChart;
 use PHPUnit\Framework\TestCase;
 
 /**
@@ -22,7 +24,7 @@ class WidgetRepositoryTest extends TestCase
     public function testHasWidget()
     {
         $repoMock = $this->getMockBuilder(TimesheetRepository::class)->disableOriginalConstructor()->getMock();
-        $userMock = $this->getMockBuilder(CurrentUser::class)->disableOriginalConstructor()->getMock();
+        $userMock = (new CurrentUserFactory($this))->create(new User());
 
         $sut = new WidgetRepository($repoMock, $userMock, ['test' => []]);
 
@@ -37,7 +39,7 @@ class WidgetRepositoryTest extends TestCase
     public function testGetWidgetThrowsExceptionOnNonExistingWidget()
     {
         $repoMock = $this->getMockBuilder(TimesheetRepository::class)->disableOriginalConstructor()->getMock();
-        $userMock = $this->getMockBuilder(CurrentUser::class)->disableOriginalConstructor()->getMock();
+        $userMock = (new CurrentUserFactory($this))->create(new User());
 
         $sut = new WidgetRepository($repoMock, $userMock, ['test' => []]);
         $sut->get('foo');
@@ -45,12 +47,12 @@ class WidgetRepositoryTest extends TestCase
 
     /**
      * @expectedException \App\Widget\WidgetException
-     * @expectedExceptionMessage Unknown widget type "\App\Widget\Type\FooBar"
+     * @expectedExceptionMessage Unknown widget type "FooBar"
      */
     public function testGetWidgetThrowsExceptionOnInvalidType()
     {
         $repoMock = $this->getMockBuilder(TimesheetRepository::class)->disableOriginalConstructor()->getMock();
-        $userMock = $this->getMockBuilder(CurrentUser::class)->disableOriginalConstructor()->getMock();
+        $userMock = (new CurrentUserFactory($this))->create(new User());
 
         $sut = new WidgetRepository($repoMock, $userMock, ['test' => ['type' => 'FooBar', 'user' => false]]);
         $sut->get('test');
@@ -58,14 +60,14 @@ class WidgetRepositoryTest extends TestCase
 
     /**
      * @expectedException \App\Widget\WidgetException
-     * @expectedExceptionMessage Invalid widget type "\App\Widget\Type\CompoundChart" does not extend AbstractWidgetType
+     * @expectedExceptionMessage Widget type "App\Widget\Type\CompoundChart" is not an instance of "App\Widget\Type\AbstractWidgetType"
      */
     public function testGetWidgetTriggersExceptionOnWrongClass()
     {
         $repoMock = $this->getMockBuilder(TimesheetRepository::class)->disableOriginalConstructor()->getMock();
-        $userMock = $this->getMockBuilder(CurrentUser::class)->disableOriginalConstructor()->getMock();
+        $userMock = (new CurrentUserFactory($this))->create(new User());
 
-        $sut = new WidgetRepository($repoMock, $userMock, ['test' => ['type' => 'CompoundChart', 'user' => false]]);
+        $sut = new WidgetRepository($repoMock, $userMock, ['test' => ['type' => CompoundChart::class, 'user' => false]]);
         $sut->get('test');
     }
 
@@ -77,7 +79,7 @@ class WidgetRepositoryTest extends TestCase
         $repoMock = $this->getMockBuilder(TimesheetRepository::class)->disableOriginalConstructor()->getMock();
         $repoMock->method('getStatistic')->willReturn($data);
 
-        $userMock = $this->getMockBuilder(CurrentUser::class)->disableOriginalConstructor()->getMock();
+        $userMock = (new CurrentUserFactory($this))->create(new User());
 
         $widget = [
             'color' => 'sunny',

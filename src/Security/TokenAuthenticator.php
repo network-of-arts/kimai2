@@ -54,6 +54,10 @@ class TokenAuthenticator extends AbstractGuardAuthenticator
             return !$request->headers->has(self::HEADER_JAVASCRIPT);
         }
 
+        if (!$request->cookies->has(JwTokenAuthenticator::JWT_COOKIE_NAME)) {
+            return false;
+        }
+
         return false;
     }
 

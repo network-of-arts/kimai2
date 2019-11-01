@@ -10,9 +10,11 @@
 namespace App\Controller;
 
 use App\Entity\Timesheet;
+use App\Event\TimesheetMetaDisplayEvent;
 use App\Form\TimesheetAdminEditForm;
 use App\Repository\ActivityRepository;
 use App\Repository\ProjectRepository;
+use App\Repository\Query\TimesheetQuery;
 use App\Repository\TagRepository;
 use Sensio\Bundle\FrameworkExtraBundle\Configuration\Security;
 use Symfony\Component\HttpFoundation\Request;
@@ -35,7 +37,7 @@ class TimesheetTeamController extends TimesheetAbstractController
      */
     public function indexAction($page, Request $request)
     {
-        return $this->index($page, $request, 'timesheet-team/index.html.twig');
+        return $this->index($page, $request, 'timesheet-team/index.html.twig', TimesheetMetaDisplayEvent::TEAM_TIMESHEET);
     }
 
     /**
@@ -46,7 +48,7 @@ class TimesheetTeamController extends TimesheetAbstractController
      */
     public function exportAction(Request $request)
     {
-        return $this->export($request, 'timesheet-team/export.html.twig');
+        return $this->export($request, 'timesheet-team/export.html.twig', TimesheetMetaDisplayEvent::TEAM_TIMESHEET_EXPORT);
     }
 
     /**
@@ -74,6 +76,11 @@ class TimesheetTeamController extends TimesheetAbstractController
     public function createAction(Request $request, ProjectRepository $projectRepository, ActivityRepository $activityRepository, TagRepository $tagRepository)
     {
         return $this->create($request, 'timesheet-team/edit.html.twig', $projectRepository, $activityRepository, $tagRepository);
+    }
+
+    protected function prepareQuery(TimesheetQuery $query)
+    {
+        $query->setCurrentUser($this->getUser());
     }
 
     protected function getCreateFormClassName(): string

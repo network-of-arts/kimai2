@@ -13,6 +13,9 @@ use App\Entity\Activity;
 use App\Entity\Project;
 use Doctrine\ORM\EntityManagerInterface;
 
+/**
+ * @internal
+ */
 final class ActivityIdLoader implements LoaderInterface
 {
     /**
@@ -67,6 +70,27 @@ final class ActivityIdLoader implements LoaderInterface
                 ->from(Project::class, 'p')
                 ->leftJoin('p.customer', 'customer')
                 ->andWhere($qb->expr()->in('p.id', $projectIds))
+                ->getQuery()
+                ->execute();
+
+            $qb = $em->createQueryBuilder();
+            $qb->select('PARTIAL a.{id}', 'PARTIAL project.{id}', 'teams', 'teamlead')
+                ->from(Activity::class, 'a')
+                ->leftJoin('a.project', 'project')
+                ->leftJoin('project.teams', 'teams')
+                ->leftJoin('teams.teamlead', 'teamlead')
+                ->andWhere($qb->expr()->in('a.id', $ids))
+                ->getQuery()
+                ->execute();
+
+            $qb = $em->createQueryBuilder();
+            $qb->select('PARTIAL a.{id}', 'PARTIAL project.{id}', 'PARTIAL customer.{id}', 'teams', 'teamlead')
+                ->from(Activity::class, 'a')
+                ->leftJoin('a.project', 'project')
+                ->leftJoin('project.customer', 'customer')
+                ->leftJoin('customer.teams', 'teams')
+                ->leftJoin('teams.teamlead', 'teamlead')
+                ->andWhere($qb->expr()->in('a.id', $ids))
                 ->getQuery()
                 ->execute();
         }

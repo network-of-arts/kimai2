@@ -10,13 +10,16 @@
 namespace App\Tests\Controller;
 
 use App\Entity\Project;
+use App\Entity\ProjectMeta;
 use App\Entity\Timesheet;
 use App\Entity\User;
 use App\Tests\DataFixtures\CustomerFixtures;
 use App\Tests\DataFixtures\ProjectFixtures;
+use App\Tests\DataFixtures\TeamFixtures;
 use App\Tests\DataFixtures\TimesheetFixtures;
 use App\Tests\Mocks\ProjectTestMetaFieldSubscriberMock;
 use Doctrine\ORM\EntityManager;
+use Symfony\Component\DomCrawler\Field\ChoiceFormField;
 
 /**
  * @group integration
@@ -26,14 +29,44 @@ class ProjectControllerTest extends ControllerBaseTest
     public function testIsSecure()
     {
         $this->assertUrlIsSecured('/admin/project/');
-        $this->assertUrlIsSecuredForRole(User::ROLE_TEAMLEAD, '/admin/project/');
+        $this->assertUrlIsSecuredForRole(User::ROLE_USER, '/admin/project/');
     }
 
     public function testIndexAction()
     {
-        $client = $this->getClientForAuthenticatedUser(User::ROLE_ADMIN);
+        $client = $this->getClientForAuthenticatedUser(User::ROLE_TEAMLEAD);
         $this->assertAccessIsGranted($client, '/admin/project/');
         $this->assertHasDataTable($client);
+    }
+
+    public function testIndexActionWithSearchTermQuery()
+    {
+        $client = $this->getClientForAuthenticatedUser(User::ROLE_ADMIN);
+        $em = $client->getContainer()->get('doctrine.orm.entity_manager');
+        $fixture = new ProjectFixtures();
+        $fixture->setAmount(5);
+        $fixture->setCallback(function (Project $project) {
+            $project->setVisible(true);
+            $project->setComment('I am a foobar with tralalalala some more content');
+            $project->setMetaField((new ProjectMeta())->setName('location')->setValue('homeoffice'));
+            $project->setMetaField((new ProjectMeta())->setName('feature')->setValue('timetracking'));
+        });
+        $this->importFixture($em, $fixture);
+
+        $client = $this->getClientForAuthenticatedUser(User::ROLE_ADMIN);
+        $this->assertAccessIsGranted($client, '/admin/project/');
+
+        $form = $client->getCrawler()->filter('form.header-search')->form();
+        $client->submit($form, [
+            'searchTerm' => 'feature:timetracking foo',
+            'visibility' => 1,
+            'pageSize' => 50,
+            'page' => 1,
+        ]);
+
+        $this->assertTrue($client->getResponse()->isSuccessful());
+        $this->assertHasDataTable($client);
+        $this->assertDataTableRowCount($client, 'datatable_project_admin', 5);
     }
 
     public function testBudgetAction()
@@ -133,6 +166,39 @@ class ProjectControllerTest extends ControllerBaseTest
         $this->request($client, '/admin/project/1/edit');
         $editForm = $client->getCrawler()->filter('form[name=project_edit_form]')->form();
         $this->assertEquals('Test 2', $editForm->get('project_edit_form[name]')->getValue());
+    }
+
+    public function testTeamPermissionAction()
+    {
+        $client = $this->getClientForAuthenticatedUser(User::ROLE_ADMIN);
+        $em = $client->getContainer()->get('doctrine.orm.entity_manager');
+
+        /** @var Project $project */
+        $project = $em->getRepository(Project::class)->find(1);
+        self::assertEquals(0, $project->getTeams()->count());
+
+        $fixture = new TeamFixtures();
+        $fixture->setAmount(2);
+        $fixture->setAddCustomer(false);
+        $this->importFixture($em, $fixture);
+
+        $this->assertAccessIsGranted($client, '/admin/project/1/permissions');
+        $form = $client->getCrawler()->filter('form[name=project_team_permission_form]')->form();
+        /** @var ChoiceFormField $team1 */
+        $team1 = $form->get('project_team_permission_form[teams][0]');
+        $team1->tick();
+        /** @var ChoiceFormField $team2 */
+        $team2 = $form->get('project_team_permission_form[teams][1]');
+        $team2->tick();
+
+        $client->submit($form);
+        $this->assertIsRedirect($client, $this->createUrl('/admin/project/'));
+        $client->followRedirect();
+        $this->assertHasDataTable($client);
+
+        /** @var Project $project */
+        $project = $em->getRepository(Project::class)->find(1);
+        self::assertEquals(2, $project->getTeams()->count());
     }
 
     public function testDeleteAction()

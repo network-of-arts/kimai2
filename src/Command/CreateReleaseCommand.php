@@ -51,6 +51,14 @@ class CreateReleaseCommand extends Command
             ->addOption('directory', null, InputOption::VALUE_OPTIONAL, 'Directory where the release package will be stored', 'var/data/')
             ->addOption('release', null, InputOption::VALUE_OPTIONAL, 'The version that should be zipped', Constants::VERSION)
         ;
+
+        /*
+         * Hide this command in production.
+         * Maybe it should be de-activated completely?!
+         */
+        if (getenv('APP_ENV') === 'prod') {
+            $this->setHidden(true);
+        }
     }
 
     /**
@@ -106,17 +114,14 @@ class CreateReleaseCommand extends Command
         $tar .= '.tar.gz';
         $zip .= '.zip';
 
-        // this removes the current env settings, as they might differ from the release ones
-        // if we don't unset them, the .env file won't be read when executing bin/console commands
-        putenv('DATABASE_URL');
-        putenv('APP_ENV');
+        $prefix = 'APP_ENV=prod DATABASE_URL=sqlite:///%kernel.project_dir%/var/data/kimai.sqlite';
 
         $commands = [
             'Clone repository' => $gitCmd . ' ' . $tmpDir,
-            'Install composer dependencies' => 'cd ' . $tmpDir . ' && composer install --no-dev --optimize-autoloader',
-            'Create database' => 'cd ' . $tmpDir . ' && bin/console doctrine:database:create -n',
-            'Create tables' => 'cd ' . $tmpDir . ' && bin/console doctrine:schema:create -n',
-            'Add all migrations' => 'cd ' . $tmpDir . ' && bin/console doctrine:migrations:version --add --all -n',
+            'Install composer dependencies' => sprintf('cd %s && %s composer install --no-dev --optimize-autoloader', $tmpDir, $prefix),
+            'Create database' => sprintf('cd %s && %s bin/console doctrine:database:create -n', $tmpDir, $prefix),
+            'Create tables' => sprintf('cd %s && %s bin/console doctrine:schema:create -n', $tmpDir, $prefix),
+            'Add all migrations' => sprintf('cd %s && %s bin/console doctrine:migrations:version --add --all -n', $tmpDir, $prefix),
         ];
 
         $filesToDelete = [

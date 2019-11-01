@@ -11,8 +11,11 @@ namespace App\Controller;
 
 use App\Configuration\FormConfiguration;
 use App\Entity\Customer;
+use App\Entity\MetaTableTypeInterface;
 use App\Event\CustomerMetaDefinitionEvent;
+use App\Event\CustomerMetaDisplayEvent;
 use App\Form\CustomerEditForm;
+use App\Form\CustomerTeamPermissionForm;
 use App\Form\Toolbar\CustomerToolbarForm;
 use App\Form\Type\CustomerType;
 use App\Repository\CustomerRepository;
@@ -48,10 +51,6 @@ class CustomerController extends AbstractController
      */
     protected $dispatcher;
 
-    /**
-     * @param CustomerRepository $repository
-     * @param FormConfiguration $configuration
-     */
     public function __construct(CustomerRepository $repository, FormConfiguration $configuration, EventDispatcherInterface $dispatcher)
     {
         $this->repository = $repository;
@@ -71,36 +70,46 @@ class CustomerController extends AbstractController
      * @Route(path="/", defaults={"page": 1}, name="admin_customer", methods={"GET"})
      * @Route(path="/page/{page}", requirements={"page": "[1-9]\d*"}, name="admin_customer_paginated", methods={"GET"})
      * @Security("is_granted('view_customer')")
-     *
-     * @param int $page
-     * @param Request $request
-     * @return Response
      */
     public function indexAction($page, Request $request)
     {
         $query = new CustomerQuery();
+        $query->setCurrentUser($this->getUser());
         $query->setPage($page);
 
         $form = $this->getToolbarForm($query);
         $form->setData($query);
         $form->submit($request->query->all(), false);
 
+        if (!$form->isValid()) {
+            $query->resetByFormError($form->getErrors());
+        }
+
         $entries = $this->getRepository()->getPagerfantaForQuery($query);
 
         return $this->render('customer/index.html.twig', [
             'entries' => $entries,
             'query' => $query,
-            'showFilter' => $query->isDirty(),
             'toolbarForm' => $form->createView(),
+            'metaColumns' => $this->findMetaColumns($query),
         ]);
+    }
+
+    /**
+     * @param CustomerQuery $query
+     * @return MetaTableTypeInterface[]
+     */
+    protected function findMetaColumns(CustomerQuery $query): array
+    {
+        $event = new CustomerMetaDisplayEvent($query, CustomerMetaDisplayEvent::CUSTOMER);
+        $this->dispatcher->dispatch($event);
+
+        return $event->getFields();
     }
 
     /**
      * @Route(path="/create", name="admin_customer_create", methods={"GET", "POST"})
      * @Security("is_granted('create_customer')")
-     *
-     * @param Request $request
-     * @return RedirectResponse|Response
      */
     public function createAction(Request $request)
     {
@@ -118,27 +127,54 @@ class CustomerController extends AbstractController
     }
 
     /**
+     * @Route(path="/{id}/permissions", name="admin_customer_permissions", methods={"GET", "POST"})
+     * @Security("is_granted('permissions', customer)")
+     */
+    public function teamPermissions(Customer $customer, Request $request)
+    {
+        $form = $this->createForm(CustomerTeamPermissionForm::class, $customer, [
+            'action' => $this->generateUrl('admin_customer_permissions', ['id' => $customer->getId()]),
+            'method' => 'POST',
+        ]);
+
+        $form->handleRequest($request);
+
+        if ($form->isSubmitted() && $form->isValid()) {
+            try {
+                $this->getRepository()->saveCustomer($customer);
+                $this->flashSuccess('action.update.success');
+
+                return $this->redirectToRoute('admin_customer');
+            } catch (ORMException $ex) {
+                $this->flashError('action.update.error', ['%reason%' => $ex->getMessage()]);
+            }
+        }
+
+        return $this->render('customer/permissions.html.twig', [
+            'customer' => $customer,
+            'form' => $form->createView()
+        ]);
+    }
+
+    /**
      * @Route(path="/{id}/budget", name="admin_customer_budget", methods={"GET"})
      * @Security("is_granted('budget', customer)")
-     *
-     * @param Customer $customer
-     * @return Response
      */
     public function budgetAction(Customer $customer)
     {
+        $stats = $this->getRepository()->getCustomerStatistics($customer);
+
+        // TODO sent event with stats
+
         return $this->render('customer/budget.html.twig', [
             'customer' => $customer,
-            'stats' => $this->getRepository()->getCustomerStatistics($customer)
+            'stats' => $stats,
         ]);
     }
 
     /**
      * @Route(path="/{id}/edit", name="admin_customer_edit", methods={"GET", "POST"})
      * @Security("is_granted('edit', customer)")
-     *
-     * @param Customer $customer
-     * @param Request $request
-     * @return RedirectResponse|Response
      */
     public function editAction(Customer $customer, Request $request)
     {
@@ -148,10 +184,6 @@ class CustomerController extends AbstractController
     /**
      * @Route(path="/{id}/delete", name="admin_customer_delete", methods={"GET", "POST"})
      * @Security("is_granted('delete', customer)")
-     *
-     * @param Customer $customer
-     * @param Request $request
-     * @return RedirectResponse|Response
      */
     public function deleteAction(Customer $customer, Request $request)
     {
@@ -169,6 +201,7 @@ class CustomerController extends AbstractController
                 'query_builder' => function (CustomerRepository $repo) use ($customer) {
                     $query = new CustomerFormTypeQuery();
                     $query->setCustomerToIgnore($customer);
+                    $query->setUser($this->getUser());
 
                     return $repo->getQueryBuilderForFormType($query);
                 },
@@ -206,7 +239,7 @@ class CustomerController extends AbstractController
     protected function renderCustomerForm(Customer $customer, Request $request)
     {
         $event = new CustomerMetaDefinitionEvent($customer);
-        $this->dispatcher->dispatch(CustomerMetaDefinitionEvent::class, $event);
+        $this->dispatcher->dispatch($event);
 
         $editForm = $this->createEditForm($customer);
 
@@ -229,11 +262,7 @@ class CustomerController extends AbstractController
         ]);
     }
 
-    /**
-     * @param CustomerQuery $query
-     * @return FormInterface
-     */
-    protected function getToolbarForm(CustomerQuery $query)
+    protected function getToolbarForm(CustomerQuery $query): FormInterface
     {
         return $this->createForm(CustomerToolbarForm::class, $query, [
             'action' => $this->generateUrl('admin_customer', [
@@ -243,11 +272,7 @@ class CustomerController extends AbstractController
         ]);
     }
 
-    /**
-     * @param Customer $customer
-     * @return FormInterface
-     */
-    private function createEditForm(Customer $customer)
+    private function createEditForm(Customer $customer): FormInterface
     {
         if ($customer->getId() === null) {
             $url = $this->generateUrl('admin_customer_create');

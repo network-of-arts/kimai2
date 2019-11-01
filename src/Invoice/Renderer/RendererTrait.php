@@ -10,9 +10,9 @@
 namespace App\Invoice\Renderer;
 
 use App\Entity\InvoiceDocument;
-use App\Entity\Timesheet;
 use App\Entity\UserPreference;
-use App\Model\InvoiceModel;
+use App\Invoice\InvoiceItem;
+use App\Invoice\InvoiceModel;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
 use Symfony\Component\HttpFoundation\ResponseHeaderBag;
 
@@ -75,6 +75,12 @@ trait RendererTrait
     abstract protected function getFormattedDuration($seconds);
 
     /**
+     * @param int $seconds
+     * @return mixed
+     */
+    abstract protected function getFormattedDecimalDuration($seconds);
+
+    /**
      * @param InvoiceModel $model
      * @return array
      */
@@ -93,6 +99,7 @@ trait RendererTrait
             'invoice.vat' => $model->getCalculator()->getVat(),
             'invoice.tax' => $this->getFormattedMoney($model->getCalculator()->getTax(), $currency),
             'invoice.total_time' => $this->getFormattedDuration($model->getCalculator()->getTimeWorked()),
+            'invoice.duration_decimal' => $this->getFormattedDecimalDuration($model->getCalculator()->getTimeWorked()),
             'invoice.total' => $this->getFormattedMoney($model->getCalculator()->getTotal(), $currency),
             'invoice.subtotal' => $this->getFormattedMoney($model->getCalculator()->getSubtotal(), $currency),
 
@@ -104,8 +111,10 @@ trait RendererTrait
             'template.due_days' => $model->getTemplate()->getDueDays(),
 
             'query.begin' => $this->getFormattedDateTime($model->getQuery()->getBegin()),
+            'query.day' => $model->getQuery()->getBegin()->format('d'),
             'query.end' => $this->getFormattedDateTime($model->getQuery()->getEnd()),
             'query.month' => $this->getFormattedMonthName($model->getQuery()->getBegin()),
+            'query.month_number' => $model->getQuery()->getBegin()->format('m'),
             'query.year' => $model->getQuery()->getBegin()->format('Y'),
         ];
 
@@ -114,6 +123,8 @@ trait RendererTrait
                 'activity.id' => $activity->getId(),
                 'activity.name' => $activity->getName(),
                 'activity.comment' => $activity->getComment(),
+                'activity.fixed_rate' => $activity->getFixedRate(),
+                'activity.hourly_rate' => $activity->getHourlyRate(),
             ]);
 
             foreach ($activity->getVisibleMetaFields() as $metaField) {
@@ -129,6 +140,8 @@ trait RendererTrait
                 'project.name' => $project->getName(),
                 'project.comment' => $project->getComment(),
                 'project.order_number' => $project->getOrderNumber(),
+                'project.fixed_rate' => $project->getFixedRate(),
+                'project.hourly_rate' => $project->getHourlyRate(),
             ]);
 
             foreach ($project->getVisibleMetaFields() as $metaField) {
@@ -149,6 +162,8 @@ trait RendererTrait
                 'customer.country' => $customer->getCountry(),
                 'customer.homepage' => $customer->getHomepage(),
                 'customer.comment' => $customer->getComment(),
+                'customer.fixed_rate' => $customer->getFixedRate(),
+                'customer.hourly_rate' => $customer->getHourlyRate(),
             ]);
 
             foreach ($customer->getVisibleMetaFields() as $metaField) {
@@ -162,39 +177,44 @@ trait RendererTrait
     }
 
     /**
-     * @param Timesheet $timesheet
-     * @return array
+     * @deprecated since 1.3 - will be removed with 2.0
      */
-    protected function timesheetToArray(Timesheet $timesheet)
+    protected function timesheetToArray(InvoiceItem $invoiceItem): array
     {
-        $rate = $timesheet->getRate();
-        $hourlyRate = $timesheet->getHourlyRate();
-        $amount = $this->getFormattedDuration($timesheet->getDuration());
-        $description = $timesheet->getDescription();
+        @trigger_error('timesheetToArray() is deprecated and will be removed with 2.0', E_USER_DEPRECATED);
 
-        if (null !== $timesheet->getFixedRate()) {
-            $rate = $timesheet->getFixedRate();
-            $hourlyRate = $timesheet->getFixedRate();
-            $amount = 1;
+        return $this->invoiceItemToArray($invoiceItem);
+    }
+
+    protected function invoiceItemToArray(InvoiceItem $invoiceItem): array
+    {
+        $rate = $invoiceItem->getRate();
+        $hourlyRate = $invoiceItem->getHourlyRate();
+        $amount = $this->getFormattedDuration($invoiceItem->getDuration());
+        $description = $invoiceItem->getDescription();
+
+        if ($invoiceItem->isFixedRate()) {
+            $hourlyRate = $invoiceItem->getFixedRate();
+            $amount = $invoiceItem->getAmount();
         }
 
         if (empty($description)) {
-            $description = $timesheet->getActivity()->getName();
+            $description = $invoiceItem->getActivity()->getName();
         }
 
-        $user = $timesheet->getUser();
+        $user = $invoiceItem->getUser();
 
         if (empty($hourlyRate)) {
             $hourlyRate = $user->getPreferenceValue(UserPreference::HOURLY_RATE);
         }
 
-        $activity = $timesheet->getActivity();
-        $project = $timesheet->getProject();
+        $activity = $invoiceItem->getActivity();
+        $project = $invoiceItem->getProject();
         $customer = $project->getCustomer();
         $currency = $customer->getCurrency();
 
-        $begin = $timesheet->getBegin();
-        $end = $timesheet->getEnd();
+        $begin = $invoiceItem->getBegin();
+        $end = $invoiceItem->getEnd();
 
         $values = [
             'entry.row' => '',
@@ -203,8 +223,9 @@ trait RendererTrait
             'entry.rate' => $this->getFormattedMoney($hourlyRate, $currency),
             'entry.total' => $this->getFormattedMoney($rate, $currency),
             'entry.currency' => $currency,
-            'entry.duration' => $timesheet->getDuration(),
-            'entry.duration_minutes' => number_format($timesheet->getDuration() / 60),
+            'entry.duration' => $invoiceItem->getDuration(),
+            'entry.duration_decimal' => $this->getFormattedDecimalDuration($invoiceItem->getDuration()),
+            'entry.duration_minutes' => number_format($invoiceItem->getDuration() / 60),
             'entry.begin' => $this->getFormattedDateTime($begin),
             'entry.begin_time' => $this->getFormattedTime($begin),
             'entry.begin_timestamp' => $begin->getTimestamp(),
@@ -224,9 +245,9 @@ trait RendererTrait
             'entry.customer_id' => $customer->getId(),
         ];
 
-        foreach ($timesheet->getVisibleMetaFields() as $metaField) {
+        foreach ($invoiceItem->getAdditionalFields() as $name => $value) {
             $values = array_merge($values, [
-                'entry.meta.' . $metaField->getName() => $metaField->getValue(),
+                'entry.meta.' . $name => $value,
             ]);
         }
 

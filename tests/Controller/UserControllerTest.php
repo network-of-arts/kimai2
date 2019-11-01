@@ -29,7 +29,28 @@ class UserControllerTest extends ControllerBaseTest
         $client = $this->getClientForAuthenticatedUser(User::ROLE_SUPER_ADMIN);
         $this->assertAccessIsGranted($client, '/admin/user/');
         $this->assertHasDataTable($client);
-        $this->assertDataTableRowCount($client, 'datatable_user_admin', 5);
+        $this->assertDataTableRowCount($client, 'datatable_user_admin', 7);
+    }
+
+    public function testIndexActionWithSearchTermQuery()
+    {
+        $client = $this->getClientForAuthenticatedUser(User::ROLE_SUPER_ADMIN);
+
+        $this->request($client, '/admin/user/');
+        $this->assertTrue($client->getResponse()->isSuccessful());
+
+        $form = $client->getCrawler()->filter('form.header-search')->form();
+        $client->submit($form, [
+            'searchTerm' => 'hourly_rate:35 tony',
+            'role' => 'ROLE_TEAMLEAD',
+            'visibility' => 1,
+            'pageSize' => 50,
+            'page' => 1,
+        ]);
+
+        $this->assertTrue($client->getResponse()->isSuccessful());
+        $this->assertHasDataTable($client);
+        $this->assertDataTableRowCount($client, 'datatable_user_admin', 1);
     }
 
     public function testCreateAction()
@@ -52,11 +73,12 @@ class UserControllerTest extends ControllerBaseTest
         $this->assertIsRedirect($client, $this->createUrl('/profile/' . urlencode($username) . '/edit'));
         $client->followRedirect();
 
-        $expectedTabs = ['#settings', '#password', '#api-token', '#roles'];
+        $expectedTabs = ['#settings', '#password', '#api-token', '#teams', '#roles'];
 
         $tabs = $client->getCrawler()->filter('div.nav-tabs-custom ul.nav-tabs li');
         $this->assertEquals(count($expectedTabs), $tabs->count());
         $foundTabs = [];
+        /** @var \DOMElement $tab */
         foreach ($tabs->filter('a') as $tab) {
             $foundTabs[] = $tab->getAttribute('href');
         }
@@ -210,6 +232,6 @@ class UserControllerTest extends ControllerBaseTest
         $client = $this->getClientForAuthenticatedUser(User::ROLE_SUPER_ADMIN);
         $this->assertAccessIsGranted($client, '/admin/user/permissions');
         $this->assertHasDataTable($client);
-        $this->assertDataTableRowCount($client, 'datatable_user_admin_permissions', 69);
+        $this->assertDataTableRowCount($client, 'datatable_user_admin_permissions', 83);
     }
 }

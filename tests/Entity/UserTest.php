@@ -9,6 +9,7 @@
 
 namespace App\Tests\Entity;
 
+use App\Entity\Team;
 use App\Entity\User;
 use App\Entity\UserPreference;
 use Doctrine\Common\Collections\ArrayCollection;
@@ -24,6 +25,7 @@ class UserTest extends TestCase
         $user = new User();
         $this->assertInstanceOf(ArrayCollection::class, $user->getPreferences());
         $this->assertNull($user->getTitle());
+        $this->assertNull($user->getDisplayName());
         $this->assertNull($user->getAvatar());
         $this->assertNull($user->getAlias());
         $this->assertNull($user->getId());
@@ -72,17 +74,20 @@ class UserTest extends TestCase
         $this->assertEquals('I like rain', $user->getPreferenceValue('test2'));
     }
 
-    public function testToString()
+    public function testDisplayName()
     {
         $user = new User();
 
         $user->setUsername('bar');
-        $this->assertEquals('bar', (string) $user);
+        $this->assertEquals('bar', $user->getDisplayName());
         $this->assertEquals('bar', $user->getUsername());
+        $this->assertEquals('bar', (string) $user);
 
         $user->setAlias('foo');
-        $this->assertEquals('foo', (string) $user);
         $this->assertEquals('foo', $user->getAlias());
+        $this->assertEquals('bar', $user->getUsername());
+        $this->assertEquals('foo', $user->getDisplayName());
+        $this->assertEquals('foo', (string) $user);
     }
 
     public function testGetLocale()
@@ -96,5 +101,45 @@ class UserTest extends TestCase
         $sut->addPreference($language);
 
         $this->assertEquals('fr', $sut->getLocale());
+    }
+
+    public function testTeams()
+    {
+        $sut = new User();
+        $team = new Team();
+        self::assertEmpty($sut->getTeams());
+        self::assertEmpty($team->getUsers());
+
+        $sut->addTeam($team);
+        self::assertCount(1, $sut->getTeams());
+        self::assertSame($team, $sut->getTeams()[0]);
+        self::assertSame($sut, $team->getUsers()[0]);
+
+        self::assertFalse($sut->isTeamleadOf($team));
+        self::assertTrue($sut->isInTeam($team));
+
+        $team2 = new Team();
+        self::assertFalse($sut->isInTeam($team2));
+        self::assertFalse($sut->isTeamleadOf($team2));
+        $team2->setTeamLead($sut);
+        self::assertTrue($sut->isTeamleadOf($team2));
+        self::assertTrue($sut->isInTeam($team2));
+
+        $sut->removeTeam(new Team());
+        self::assertCount(2, $sut->getTeams());
+        $sut->removeTeam($team);
+        self::assertCount(1, $sut->getTeams());
+        $sut->removeTeam($team2);
+        self::assertCount(0, $sut->getTeams());
+    }
+
+    public function testRoles()
+    {
+        $sut = new User();
+        self::assertFalse($sut->isTeamlead());
+        $sut->addRole(User::ROLE_ADMIN);
+        self::assertFalse($sut->isTeamlead());
+        $sut->addRole(User::ROLE_TEAMLEAD);
+        self::assertTrue($sut->isTeamlead());
     }
 }

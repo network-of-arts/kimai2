@@ -10,14 +10,17 @@
 namespace App\Event;
 
 use App\Entity\User;
-use Symfony\Component\EventDispatcher\Event;
+use Symfony\Contracts\EventDispatcher\Event;
 
 /**
  * This event should be used, if a user profile is loaded and want to fill the dynamic user preferences
  */
 final class PrepareUserEvent extends Event
 {
-    public const PREPARE = 'app.prepare_user';
+    /**
+     * @deprecated since 1.4, will be removed with 2.0
+     */
+    public const PREPARE = PrepareUserEvent::class;
 
     /**
      * @var User

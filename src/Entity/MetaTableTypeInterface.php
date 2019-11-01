@@ -133,4 +133,34 @@ interface MetaTableTypeInterface
      * @return MetaTableTypeInterface
      */
     public function setConstraints(array $constraints): MetaTableTypeInterface;
+
+    /**
+     * Returns the label shown to the end-user.
+     *
+     * @return string
+     */
+    public function getLabel(): ?string;
+
+    /**
+     * Sets the label shown to the end-user.
+     *
+     * @param string $label
+     * @return MetaTableTypeInterface
+     */
+    public function setLabel(string $label): MetaTableTypeInterface;
+
+    /**
+     * Set an array of options for the FormType.
+     *
+     * @param array $options
+     * @return MetaTableTypeInterface
+     */
+    public function setOptions(array $options): MetaTableTypeInterface;
+
+    /**
+     * Returns an array with options for the FormType.
+     *
+     * @return array
+     */
+    public function getOptions(): array;
 }

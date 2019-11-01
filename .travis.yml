@@ -1,41 +1,55 @@
+dist: xenial
 language: php
-sudo: false
 
 cache:
-  directories:
-    - $HOME/.composer/cache/files
-
-addons:
-  mariadb: '10.2'
-
-services:
-  - mysql
-
-env:
-  global:
-    - CODECOVERAGE=0
+    directories:
+        - $HOME/.composer/cache/files
 
 matrix:
-  fast_finish: true
-  include:
-    - php: '7.2'
-    - php: '7.3'
+    include:
+        -   stage: Code quality
+            env: CODECOVERAGE=0 DB=sqlite
+            php: '7.2'
+            script:
+                - composer validate --no-check-all --strict
+                - composer kimai:codestyle
+                - composer kimai:phpstan
+        -   stage: Test
+            php: '7.2'
+            env: CODECOVERAGE=0 DB=mysql
+            sudo: required
+            services:
+                - mysql
+        -   stage: Test
+            php: '7.3'
+            env: CODECOVERAGE=0 DB=mysql
+            sudo: required
+            services:
+                - mysql
+        -   stage: Code coverage
+            php: '7.3'
+            env: CODECOVERAGE=1 DB=sqlite
+            after_success:
+                - if [[ $CODECOVERAGE == 1 ]]; then bash <(curl -s https://codecov.io/bash); fi
 
 before_install:
-  - composer self-update
-  - php -i
-  - php -m
+    - composer self-update
+    - php -i
+    - php -m
 
 install:
-  - composer install
-  - composer require zendframework/zend-ldap
+    - composer install
+    - composer require zendframework/zend-ldap
 
 script:
-  - composer validate --no-check-all --strict
-  - composer kimai:codestyle
-  - composer kimai:phpstan
-  - vendor/bin/phpunit tests/
-  - cp tests/.env.dist.sqlite .env
-  - bin/console doctrine:database:create -n
-  - bin/console doctrine:migrations:migrate -n
-  - bin/console doctrine:migrations:migrate first -n
+    - composer validate --no-check-all --strict
+    - composer kimai:codestyle
+    - composer kimai:phpstan
+    - if [[ $CODECOVERAGE == 1 ]]; then vendor/bin/phpunit tests/ --coverage-clover=coverage.xml; fi;
+    - if [[ $CODECOVERAGE == 0 ]]; then vendor/bin/phpunit tests/; fi;
+    - if [[ $DB == 'sqlite' ]]; then cp tests/.env.dist.sqlite .env; fi;
+    - if [[ $DB == "mysql" || $DB == "mariadb" ]]; then cp tests/.env.dist.mysql .env; fi;
+    - bin/console doctrine:database:create -n
+    - bin/console doctrine:migrations:migrate -n
+    - bin/console doctrine:migrations:migrate first -n
+

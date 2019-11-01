@@ -10,8 +10,8 @@
 namespace App\Invoice\Renderer;
 
 use App\Entity\InvoiceDocument;
+use App\Invoice\InvoiceModel;
 use App\Invoice\RendererInterface;
-use App\Model\InvoiceModel;
 use PhpOffice\PhpWord\Escaper\Xml;
 use PhpOffice\PhpWord\Exception\Exception as OfficeException;
 use PhpOffice\PhpWord\Settings;
@@ -50,7 +50,7 @@ class DocxRenderer extends AbstractRenderer implements RendererInterface
 
         $i = 1;
         foreach ($model->getCalculator()->getEntries() as $entry) {
-            $values = $this->timesheetToArray($entry);
+            $values = $this->invoiceItemToArray($entry);
             foreach ($values as $search => $replace) {
                 $replace = $xmlEscaper->escape($replace);
                 $replace = str_replace(PHP_EOL, '</w:t><w:br /><w:t xml:space="preserve">', $replace);

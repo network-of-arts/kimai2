@@ -208,14 +208,16 @@ abstract class ControllerBaseTest extends WebTestCase
     protected function assertPageActions(Client $client, array $buttons)
     {
         $node = $client->getCrawler()->filter('section.content-header div.breadcrumb div.box-tools div.btn-group a.btn');
-        self::assertEquals(count($buttons), $node->count());
 
+        /** @var \DOMElement $element */
         foreach ($node->getIterator() as $element) {
             $expectedClass = str_replace('btn btn-default btn-', '', $element->getAttribute('class'));
             self::assertArrayHasKey($expectedClass, $buttons);
             $expectedUrl = $buttons[$expectedClass];
             self::assertEquals($expectedUrl, $element->getAttribute('href'));
         }
+
+        self::assertEquals(count($buttons), $node->count(), 'Invalid amount of page actions');
     }
 
     /**
@@ -254,7 +256,9 @@ abstract class ControllerBaseTest extends WebTestCase
             $validation = $list->filter('li.text-danger');
             if (count($validation) < 1) {
                 // decorated form fields with icon have a different html structure, see kimai-theme.html.twig
-                $classes = $field->parents()->getNode(1)->getAttribute('class');
+                /** @var \DOMElement $listMsg */
+                $listMsg = $field->parents()->getNode(1);
+                $classes = $listMsg->getAttribute('class');
                 self::assertContains('has-error', $classes, 'Form field has no validation message: ' . $name);
             }
         }

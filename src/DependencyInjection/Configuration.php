@@ -9,8 +9,11 @@
 
 namespace App\DependencyInjection;
 
+use App\Entity\Customer;
 use App\Entity\User;
 use App\Timesheet\Rounding\RoundingInterface;
+use App\Widget\Type\CompoundRow;
+use App\Widget\Type\Counter;
 use Symfony\Component\Config\Definition\Builder\ArrayNodeDefinition;
 use Symfony\Component\Config\Definition\Builder\TreeBuilder;
 use Symfony\Component\Config\Definition\ConfigurationInterface;
@@ -36,31 +39,32 @@ class Configuration implements ConfigurationInterface
                 ->scalarNode('data_dir')
                     ->isRequired()
                     ->validate()
-                        ->ifTrue(function ($value) {
-                            return !file_exists($value);
-                        })
-                        ->thenInvalid('Data directory does not exist')
-                    ->end()
-                ->end()
-                ->scalarNode('plugin_dir')
-                    ->isRequired()
-                    ->validate()
-                        ->ifTrue(function ($value) {
-                            return !file_exists($value);
-                        })
-                        ->thenInvalid('Plugin directory does not exist')
-                    ->end()
-                ->end()
-                ->append($this->getExportNode())
-                ->append($this->getUserNode())
-                ->append($this->getTimesheetNode())
-                ->append($this->getInvoiceNode())
-                ->append($this->getLanguagesNode())
-                ->append($this->getCalendarNode())
-                ->append($this->getThemeNode())
-                ->append($this->getDashboardNode())
-                ->append($this->getWidgetsNode())
-                ->append($this->getDefaultsNode())
+            ->ifTrue(function ($value) {
+                return !file_exists($value);
+            })
+            ->thenInvalid('Data directory does not exist')
+            ->end()
+            ->end()
+            ->scalarNode('plugin_dir')
+            ->isRequired()
+            ->validate()
+            ->ifTrue(function ($value) {
+                return !file_exists($value);
+            })
+            ->thenInvalid('Plugin directory does not exist')
+            ->end()
+            ->end()
+            ->append($this->getExportNode())
+            ->append($this->getUserNode())
+            ->append($this->getTimesheetNode())
+            ->append($this->getInvoiceNode())
+            ->append($this->getLanguagesNode())
+            ->append($this->getCalendarNode())
+            ->append($this->getThemeNode())
+            ->append($this->getIndustryNode())
+            ->append($this->getDashboardNode())
+            ->append($this->getWidgetsNode())
+            ->append($this->getDefaultsNode())
                 ->append($this->getPermissionsNode())
                 ->append($this->getLdapNode())
             ->end()
@@ -201,14 +205,13 @@ class Configuration implements ConfigurationInterface
         $node
             ->addDefaultsIfNotSet()
             ->children()
-                ->arrayNode('pdf')
-                    ->children()
-                        ->booleanNode('display_cost')
-                            ->defaultValue(true)
-                    ->end()
-                ->end()
+            ->arrayNode('pdf')
+            ->children()
+            ->booleanNode('display_cost')
+            ->defaultValue(true)
             ->end()
-        ;
+            ->end()
+            ->end();
 
         return $node;
     }
@@ -332,7 +335,10 @@ class Configuration implements ConfigurationInterface
                     ->setDeprecated('The node "%node%" at path "%path%" was removed, please delete it from your config.')
                 ->end()
                 ->scalarNode('select_type')
-                    ->defaultNull()
+                    ->defaultValue('selectpicker')
+                ->end()
+                ->scalarNode('auto_reload_datatable')
+                    ->defaultFalse()
                 ->end()
                 ->booleanNode('show_about')
                     ->defaultTrue()
@@ -361,8 +367,30 @@ class Configuration implements ConfigurationInterface
                         ->scalarNode('title')
                             ->defaultNull()
                         ->end()
+                        ->scalarNode('translation')
+                            ->defaultNull()
+                        ->end()
                     ->end()
                 ->end()
+                ->integerNode('autocomplete_chars')
+                    ->defaultValue(3)
+                ->end()
+            ->end()
+        ;
+
+        return $node;
+    }
+
+    protected function getIndustryNode()
+    {
+        $builder = new TreeBuilder('industry');
+        /** @var ArrayNodeDefinition $rootNode */
+        $node = $builder->getRootNode();
+
+        $node
+            ->addDefaultsIfNotSet()
+            ->children()
+                ->scalarNode('translation')->defaultNull()->end()
             ->end()
         ;
 
@@ -409,7 +437,7 @@ class Configuration implements ConfigurationInterface
                     ->scalarNode('end')->end()
                     ->scalarNode('icon')->defaultValue('')->end()
                     ->scalarNode('color')->defaultValue('')->end()
-                    ->scalarNode('type')->defaultValue('counter')->end()
+                    ->scalarNode('type')->defaultValue(Counter::class)->end()
                 ->end()
             ->end()
         ;
@@ -429,7 +457,7 @@ class Configuration implements ConfigurationInterface
                 ->arrayPrototype()
                     ->addDefaultsIfNotSet()
                     ->children()
-                        ->scalarNode('type')->defaultValue('simple')->end()
+                        ->scalarNode('type')->defaultValue(CompoundRow::class)->end()
                         ->integerNode('order')->defaultValue(0)->end()
                         ->scalarNode('title')->end()
                         ->scalarNode('permission')->defaultNull()->end()
@@ -460,7 +488,7 @@ class Configuration implements ConfigurationInterface
                     ->children()
                         ->scalarNode('timezone')->defaultNull()->end()
                         ->scalarNode('country')->defaultValue('DE')->end()
-                        ->scalarNode('currency')->defaultValue('EUR')->end()
+                        ->scalarNode('currency')->defaultValue(Customer::DEFAULT_CURRENCY)->end()
                     ->end()
                 ->end()
                 ->arrayNode('user')
@@ -469,9 +497,9 @@ class Configuration implements ConfigurationInterface
                         ->scalarNode('timezone')->defaultNull()->end()
                         ->scalarNode('language')->defaultValue(User::DEFAULT_LANGUAGE)->end()
                         ->scalarNode('theme')->defaultNull()->end()
+                        ->scalarNode('currency')->defaultValue(Customer::DEFAULT_CURRENCY)->end()
                     ->end()
                 ->end()
-
             ->end()
         ;
 

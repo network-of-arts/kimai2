@@ -28,7 +28,7 @@
             </trans-unit>
             <trans-unit id="profile-stats">
                 <source>profile-stats</source>
-                <target>Statistiken</target>
+                <target>Profil</target>
             </trans-unit>
             <trans-unit id="settings">
                 <source>settings</source>
@@ -69,6 +69,10 @@
             <trans-unit id="create-timesheet">
                 <source>create-timesheet</source>
                 <target>Zeit erfassen</target>
+            </trans-unit>
+            <trans-unit id="permissions">
+                <source>permissions</source>
+                <target>Team Berechtigungen</target>
             </trans-unit>
         </body>
     </file>

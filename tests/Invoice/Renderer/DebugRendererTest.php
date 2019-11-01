@@ -10,7 +10,7 @@
 namespace App\Tests\Invoice\Renderer;
 
 use App\Entity\InvoiceDocument;
-use App\Model\InvoiceModel;
+use App\Invoice\InvoiceModel;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\HttpFoundation\Response;
 
@@ -45,10 +45,13 @@ class DebugRendererTest extends TestCase
             $this->assertEntryStructure($row, $meta);
         }
 
+        $begin = $model->getQuery()->getBegin();
+        self::assertEquals($begin->format('m'), $data['model']['query.month_number']);
+        self::assertEquals($begin->format('d'), $data['model']['query.day']);
         // TODO check values or formats?
     }
 
-    protected function assertModelStructure(array $model, $hasProject = true, $hasActivity = false)
+    protected function assertModelStructure(array $model, $hasProject = true)
     {
         $keys = [
             'invoice.due_date',
@@ -58,6 +61,7 @@ class DebugRendererTest extends TestCase
             'invoice.vat',
             'invoice.tax',
             'invoice.total_time',
+            'invoice.duration_decimal',
             'invoice.total',
             'invoice.subtotal',
             'template.name',
@@ -67,8 +71,10 @@ class DebugRendererTest extends TestCase
             'template.payment_terms',
             'template.due_days',
             'query.begin',
+            'query.day',
             'query.end',
             'query.month',
+            'query.month_number',
             'query.year',
             'customer.id',
             'customer.address',
@@ -79,10 +85,14 @@ class DebugRendererTest extends TestCase
             'customer.number',
             'customer.homepage',
             'customer.comment',
+            'customer.fixed_rate',
+            'customer.hourly_rate',
             'customer.meta.foo-customer',
             'activity.id',
             'activity.name',
             'activity.comment',
+            'activity.fixed_rate',
+            'activity.hourly_rate',
             'activity.meta.foo-activity',
         ];
 
@@ -92,15 +102,9 @@ class DebugRendererTest extends TestCase
                 'project.name',
                 'project.comment',
                 'project.order_number',
+                'project.fixed_rate',
+                'project.hourly_rate',
                 'project.meta.foo-project',
-            ]);
-        }
-
-        if ($hasActivity) {
-            $keys = array_merge($keys, [
-                'activity.id',
-                'activity.name',
-                'activity.comment',
             ]);
         }
 
@@ -121,6 +125,7 @@ class DebugRendererTest extends TestCase
             'entry.total',
             'entry.currency',
             'entry.duration',
+            'entry.duration_decimal',
             'entry.duration_minutes',
             'entry.begin',
             'entry.begin_time',

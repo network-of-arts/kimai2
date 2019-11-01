@@ -10,14 +10,17 @@
 namespace App\Event;
 
 use App\Form\Model\SystemConfiguration;
-use Symfony\Component\EventDispatcher\Event;
+use Symfony\Contracts\EventDispatcher\Event;
 
 /**
  * This event should be used, if system configurations should be changed/added dynamically.
  */
 final class SystemConfigurationEvent extends Event
 {
-    public const CONFIGURE = 'app.system_configuration';
+    /**
+     * @deprecated since 1.4, will be removed with 2.0
+     */
+    public const CONFIGURE = SystemConfigurationEvent::class;
 
     /**
      * @var SystemConfiguration[]
