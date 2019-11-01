@@ -16,8 +16,8 @@ security:
             pattern: ^/(_(profiler|wdt)|css|images|js)/
             security: false
 
-        secured_area:
-            pattern: ^/(?!api)
+        api:
+            pattern: ^/api
             user_checker: App\Security\UserChecker
             anonymous: true
             stateless: false
@@ -43,8 +43,8 @@ security:
                 path: fos_user_security_logout
                 target: homepage
 
-        api:
-            pattern: ^/api
+        secured_area:
+            pattern: ^/(?!api)
             user_checker: App\Security\UserChecker
             anonymous: true
             stateless: false
@@ -69,6 +69,7 @@ security:
             logout:
                 path: fos_user_security_logout
                 target: homepage
+
 
     access_decision_manager:
         strategy: unanimous
