@@ -9,6 +9,7 @@
 
 namespace App\Tests\Export\Renderer;
 
+use App\Configuration\ExportConfiguration;
 use App\Export\Renderer\PDFRenderer;
 use App\Tests\Mocks\Security\UserDateTimeFactoryFactory;
 use App\Utils\HtmlToPdfConverter;
@@ -33,7 +34,11 @@ class PdfRendererTest extends AbstractRendererTest
         $sut = new PDFRenderer(
             $this->getMockBuilder(Environment::class)->disableOriginalConstructor()->getMock(),
             $this->getDateTimeFactory(),
-            $this->getMockBuilder(HtmlToPdfConverter::class)->getMock()
+            $this->getMockBuilder(HtmlToPdfConverter::class)
+                 ->getMock(),
+            $this->getMockBuilder(ExportConfiguration::class)
+                 ->disableOriginalConstructor()
+                 ->getMock()
         );
 
         $this->assertEquals('pdf', $sut->getId());
@@ -53,12 +58,22 @@ class PdfRendererTest extends AbstractRendererTest
         $request->setLocale('en');
         $stack->push($request);
 
-        $sut = new PDFRenderer($twig, $this->getDateTimeFactory(), $converter);
+        $sut = new PDFRenderer(
+            $twig,
+            $this->getDateTimeFactory(),
+            $converter,
+            $this->getMockBuilder(ExportConfiguration::class)
+                 ->disableOriginalConstructor()
+                 ->getMock()
+        );
 
         $response = $this->render($sut);
 
         $this->assertEquals('application/pdf', $response->headers->get('Content-Type'));
-        $this->assertEquals('attachment; filename=kimai-export.pdf', $response->headers->get('Content-Disposition'));
+        $this->assertEquals(
+            'inline; filename=kimai-export.pdf',
+            $response->headers->get('Content-Disposition')
+        );
 
         $this->assertNotEmpty($response->getContent());
     }

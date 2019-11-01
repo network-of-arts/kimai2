@@ -60,3 +60,5 @@ templates/invoice/renderer/.~lock*
 npm-debug.log
 yarn-error.log
 ###< symfony/webpack-encore-bundle ###
+/mysql/
+/.bash_history

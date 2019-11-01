@@ -928,6 +928,14 @@
                 <source>export.date_copyright</source>
                 <target>Erstellt %date% mit %kimai%</target>
             </trans-unit>
+            <trans-unit id="export.user_summary_by_customer">
+                <source>export.user_summary_by_customer</source>
+                <target>Aufstellung nach Benutzer und Kunde</target>
+            </trans-unit>
+            <trans-unit id="export.user_summary_by_project">
+                <source>export.user_summary_by_project</source>
+                <target>Aufstellung nach Benutzer und Projekt</target>
+            </trans-unit>
 
             <!--
               Month names
