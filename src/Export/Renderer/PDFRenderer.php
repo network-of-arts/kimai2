@@ -45,8 +45,12 @@ final class PDFRenderer implements RendererInterface
      * @param UserDateTimeFactory $dateTime
      * @param HtmlToPdfConverter $converter
      */
-    public function __construct(Environment $twig, UserDateTimeFactory $dateTime, HtmlToPdfConverter $converter, ExportConfiguration $exportConfiguration)
-    {
+    public function __construct(
+        Environment $twig,
+        UserDateTimeFactory $dateTime,
+        HtmlToPdfConverter $converter,
+        ExportConfiguration $exportConfiguration
+    ) {
         $this->twig = $twig;
         $this->dateTime = $dateTime;
         $this->converter = $converter;
@@ -69,14 +73,18 @@ final class PDFRenderer implements RendererInterface
             'now' => $this->dateTime->createDateTime(),
             'summaries' => $this->calculateSummary($timesheets),
             'user_summary' => $this->calculateUserSummary($timesheets),
-            'display_cost' => $this->exportConfiguration->doDisplayCostOnPdf()
+            'display_cost' => $this->exportConfiguration->doDisplayCostOnPdf(),
         ]);
 
         $content = $this->converter->convertToPdf($content);
 
         $response = new Response($content);
 
-        $disposition = $response->headers->makeDisposition(ResponseHeaderBag::DISPOSITION_INLINE, 'kimai-export.pdf');
+        $disposition =
+            $response->headers->makeDisposition(
+                ResponseHeaderBag::DISPOSITION_INLINE,
+                'kimai-export.pdf'
+            );
 
         $response->headers->set('Content-Type', 'application/pdf');
         $response->headers->set('Content-Disposition', $disposition);
