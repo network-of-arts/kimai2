@@ -14,10 +14,19 @@ namespace App\Repository\Query;
  */
 class UserQuery extends VisibilityQuery
 {
+    public const USER_ORDER_ALLOWED = ['id', 'alias', 'username', 'title', 'email'];
+
     /**
      * @var string|null
      */
-    protected $role;
+    private $role;
+
+    public function __construct()
+    {
+        $this->setDefaults([
+            'orderBy' => 'username',
+        ]);
+    }
 
     /**
      * @return string|null
@@ -28,12 +37,12 @@ class UserQuery extends VisibilityQuery
     }
 
     /**
-     * @param string $role
+     * @param string|null $role
      * @return UserQuery
      */
     public function setRole($role)
     {
-        if (false !== strpos($role, 'ROLE_') || null === $role) {
+        if (null === $role || false !== strpos($role, 'ROLE_')) {
             $this->role = $role;
         }
 

@@ -9,12 +9,45 @@
 
 namespace App\Repository;
 
+use App\Entity\Tag;
+use App\Repository\Query\TagFormTypeQuery;
 use App\Repository\Query\TagQuery;
 use Doctrine\ORM\EntityRepository;
+use Doctrine\ORM\ORMException;
+use Doctrine\ORM\QueryBuilder;
+use Pagerfanta\Adapter\DoctrineORMAdapter;
+use Pagerfanta\Pagerfanta;
 
 class TagRepository extends EntityRepository
 {
-    use RepositoryTrait;
+    /**
+     * @param Tag $tag
+     * @throws ORMException
+     * @throws \Doctrine\ORM\OptimisticLockException
+     */
+    public function saveTag(Tag $tag)
+    {
+        $entityManager = $this->getEntityManager();
+        $entityManager->persist($tag);
+        $entityManager->flush();
+    }
+
+    /**
+     * @param Tag $tag
+     * @throws ORMException
+     * @throws \Doctrine\ORM\OptimisticLockException
+     */
+    public function deleteTag(Tag $tag)
+    {
+        $entityManager = $this->getEntityManager();
+        $entityManager->remove($tag);
+        $entityManager->flush();
+    }
+
+    public function findTagByName(string $tagName): ?Tag
+    {
+        return $this->findOneBy(['name' => $tagName]);
+    }
 
     /**
      * Find ids of the given tagNames separated by comma
@@ -68,7 +101,7 @@ class TagRepository extends EntityRepository
      * - amount
      *
      * @param TagQuery $query
-     * @return array|\Doctrine\ORM\QueryBuilder|\Pagerfanta\Pagerfanta
+     * @return Pagerfanta
      */
     public function getTagCount(TagQuery $query)
     {
@@ -79,9 +112,51 @@ class TagRepository extends EntityRepository
             ->leftJoin('tag.timesheets', 'timesheets')
             ->addGroupBy('tag.id')
             ->addGroupBy('tag.name')
-            ->orderBy('tag.name')
         ;
 
-        return $this->getBaseQueryResult($qb, $query);
+        $orderBy = $query->getOrderBy();
+        switch ($orderBy) {
+            case 'amount':
+                $orderBy = 'amount';
+                break;
+            default:
+                $orderBy = 'tag.' . $orderBy;
+                break;
+        }
+
+        $qb->addOrderBy($orderBy, $query->getOrder());
+
+        if ($query->hasSearchTerm()) {
+            $searchTerm = $query->getSearchTerm();
+            $searchAnd = $qb->expr()->andX();
+
+            if ($searchTerm->hasSearchTerm()) {
+                $searchAnd->add(
+                    $qb->expr()->orX(
+                        $qb->expr()->like('tag.name', ':searchTerm')
+                    )
+                );
+                $qb->setParameter('searchTerm', '%' . $searchTerm->getSearchTerm() . '%');
+            }
+
+            if ($searchAnd->count() > 0) {
+                $qb->andWhere($searchAnd);
+            }
+        }
+
+        $paginator = new Pagerfanta(new DoctrineORMAdapter($qb->getQuery(), false));
+        $paginator->setMaxPerPage($query->getPageSize());
+        $paginator->setCurrentPage($query->getPage());
+
+        return $paginator;
+    }
+
+    public function getQueryBuilderForFormType(TagFormTypeQuery $query): QueryBuilder
+    {
+        $qb = $this->createQueryBuilder('tag');
+
+        $qb->orderBy('tag.name', 'ASC');
+
+        return $qb;
     }
 }

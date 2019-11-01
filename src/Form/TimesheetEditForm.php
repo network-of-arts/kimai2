@@ -127,6 +127,16 @@ class TimesheetEditForm extends AbstractType
             $this->addEnd($builder, $dateTimeOptions);
         }
 
+        if ($options['allow_begin_datetime'] && $options['allow_end_datetime']) {
+            $builder->add('duration', DurationType::class, [
+                'required' => false,
+                'attr' => [
+                    'placeholder' => '00:00',
+                    'pattern' => '[0-9]{2,3}:[0-9]{2}'
+                ]
+            ]);
+        }
+
         if ($this->showCustomer($options, $isNew, $customerCount)) {
             $this->addCustomer($builder, $customer);
         }
@@ -163,8 +173,11 @@ class TimesheetEditForm extends AbstractType
     {
         $builder
             ->add('customer', CustomerType::class, [
-                'query_builder' => function (CustomerRepository $repo) use ($customer) {
-                    return $repo->getQueryBuilderForFormType(new CustomerFormTypeQuery($customer));
+                'query_builder' => function (CustomerRepository $repo) use ($builder, $customer) {
+                    $query = new CustomerFormTypeQuery($customer);
+                    $query->setUser($builder->getOption('user'));
+
+                    return $repo->getQueryBuilderForFormType($query);
                 },
                 'data' => $customer ? $customer : '',
                 'required' => false,
@@ -189,8 +202,11 @@ class TimesheetEditForm extends AbstractType
                 array_merge($projectOptions, [
                     'placeholder' => '',
                     'activity_enabled' => true,
-                    'query_builder' => function (ProjectRepository $repo) use ($project, $customer) {
-                        return $repo->getQueryBuilderForFormType(new ProjectFormTypeQuery($project, $customer));
+                    'query_builder' => function (ProjectRepository $repo) use ($builder, $project, $customer) {
+                        $query = new ProjectFormTypeQuery($project, $customer);
+                        $query->setUser($builder->getOption('user'));
+
+                        return $repo->getQueryBuilderForFormType($query);
                     },
                 ])
             );
@@ -198,7 +214,7 @@ class TimesheetEditForm extends AbstractType
         // replaces the project select after submission, to make sure only projects for the selected customer are displayed
         $builder->addEventListener(
             FormEvents::PRE_SUBMIT,
-            function (FormEvent $event) use ($project, $customer, $isNew) {
+            function (FormEvent $event) use ($builder, $project, $customer, $isNew) {
                 $data = $event->getData();
                 $customer = isset($data['customer']) && !empty($data['customer']) ? $data['customer'] : null;
                 $project = isset($data['project']) && !empty($data['project']) ? $data['project'] : $project;
@@ -207,22 +223,24 @@ class TimesheetEditForm extends AbstractType
                     'placeholder' => '',
                     'activity_enabled' => true,
                     'group_by' => null,
-                    'query_builder' => function (ProjectRepository $repo) use ($project, $customer, $isNew) {
+                    'query_builder' => function (ProjectRepository $repo) use ($builder, $project, $customer, $isNew) {
                         // is there a better wa to prevent starting a record with a hidden project ?
                         if ($isNew && !is_object($project)) {
                             /** @var Project $project */
                             $project = $repo->find($project);
                             if (null !== $project) {
-                                if (!$project->getCustomer()->getVisible()) {
+                                if (!$project->getCustomer()->isVisible()) {
                                     $customer = null;
                                     $project = null;
-                                } elseif (!$project->getVisible()) {
+                                } elseif (!$project->isVisible()) {
                                     $project = null;
                                 }
                             }
                         }
+                        $query = new ProjectFormTypeQuery($project, $customer);
+                        $query->setUser($builder->getOption('user'));
 
-                        return $repo->getQueryBuilderForFormType(new ProjectFormTypeQuery($project, $customer));
+                        return $repo->getQueryBuilderForFormType($query);
                     },
                 ]);
             }
@@ -287,7 +305,7 @@ class TimesheetEditForm extends AbstractType
         $builder->addEventListener(
             FormEvents::POST_SET_DATA,
             function (FormEvent $event) {
-                /** @var Timesheet $data */
+                /** @var Timesheet|null $data */
                 $data = $event->getData();
                 if (null === $data || null === $data->getEnd()) {
                     $event->getForm()->get('duration')->setData(null);
@@ -318,6 +336,9 @@ class TimesheetEditForm extends AbstractType
             ->add('description', TextareaType::class, [
                 'label' => 'label.description',
                 'required' => false,
+                'attr' => [
+                    'autofocus' => 'autofocus'
+                ]
             ]);
     }
 

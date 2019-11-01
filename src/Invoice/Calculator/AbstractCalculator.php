@@ -9,8 +9,8 @@
 
 namespace App\Invoice\Calculator;
 
-use App\Entity\Timesheet;
-use App\Model\InvoiceModel;
+use App\Invoice\InvoiceItem;
+use App\Invoice\InvoiceModel;
 
 abstract class AbstractCalculator
 {
@@ -25,7 +25,7 @@ abstract class AbstractCalculator
     protected $model;
 
     /**
-     * @return Timesheet[]
+     * @return InvoiceItem[]
      */
     abstract public function getEntries();
 
@@ -69,8 +69,8 @@ abstract class AbstractCalculator
     public function getTax(): float
     {
         $vat = $this->getVat();
-        if (0 === $vat) {
-            return 0;
+        if (0.00 === $vat) {
+            return 0.00;
         }
 
         $percent = $vat / 100.00;
@@ -103,7 +103,9 @@ abstract class AbstractCalculator
     {
         $time = 0;
         foreach ($this->model->getEntries() as $entry) {
-            $time += $entry->getDuration();
+            if (null === $entry->getFixedRate() && null !== $entry->getDuration()) {
+                $time += $entry->getDuration();
+            }
         }
 
         return $time;

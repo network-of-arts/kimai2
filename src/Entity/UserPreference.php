@@ -9,6 +9,7 @@
 
 namespace App\Entity;
 
+use App\Form\Type\YesNoType;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Form\Extension\Core\Type\CheckboxType;
 use Symfony\Component\Form\Extension\Core\Type\IntegerType;
@@ -38,7 +39,6 @@ class UserPreference
      * @ORM\Column(name="id", type="integer")
      */
     private $id;
-
     /**
      * @var User
      *
@@ -47,7 +47,6 @@ class UserPreference
      * @Assert\NotNull()
      */
     private $user;
-
     /**
      * @var string
      *
@@ -55,28 +54,29 @@ class UserPreference
      * @Assert\Length(min=2, max=50)
      */
     private $name;
-
     /**
      * @var string
      *
      * @ORM\Column(name="value", type="string", length=255, nullable=true)
      */
     private $value;
-
     /**
      * @var string
      */
-    protected $type;
-
+    private $type;
     /**
      * @var bool
      */
-    protected $enabled = true;
-
+    private $enabled = true;
     /**
      * @var Constraint[]
      */
-    protected $constraints = [];
+    private $constraints = [];
+    /**
+     * An array of options for the form element
+     * @var array
+     */
+    private $options = [];
 
     /**
      * @return int
@@ -97,18 +97,11 @@ class UserPreference
         return $this;
     }
 
-    /**
-     * @return User
-     */
-    public function getUser(): User
+    public function getUser(): ?User
     {
         return $this->user;
     }
 
-    /**
-     * @param User $user
-     * @return UserPreference
-     */
     public function setUser(User $user): UserPreference
     {
         $this->user = $user;
@@ -116,18 +109,11 @@ class UserPreference
         return $this;
     }
 
-    /**
-     * @return string
-     */
-    public function getName()
+    public function getName(): ?string
     {
         return $this->name;
     }
 
-    /**
-     * @param string $name
-     * @return UserPreference
-     */
     public function setName(string $name): UserPreference
     {
         $this->name = $name;
@@ -141,6 +127,7 @@ class UserPreference
     public function getValue()
     {
         switch ($this->type) {
+            case YesNoType::class:
             case CheckboxType::class:
                 return (bool) $this->value;
             case IntegerType::class:
@@ -170,34 +157,24 @@ class UserPreference
      * @param string $type
      * @return UserPreference
      */
-    public function setType(string $type)
+    public function setType(string $type): UserPreference
     {
         $this->type = $type;
 
         return $this;
     }
 
-    /**
-     * @return string
-     */
-    public function getType()
+    public function getType(): ?string
     {
         return $this->type;
     }
 
-    /**
-     * @return bool
-     */
     public function isEnabled(): bool
     {
         return $this->enabled;
     }
 
-    /**
-     * @param bool $enabled
-     * @return UserPreference
-     */
-    public function setEnabled(bool $enabled)
+    public function setEnabled(bool $enabled): UserPreference
     {
         $this->enabled = $enabled;
 
@@ -236,5 +213,37 @@ class UserPreference
     public function getConstraints()
     {
         return $this->constraints;
+    }
+
+    /**
+     * Set an array of options for the FormType.
+     *
+     * @param array $options
+     * @return UserPreference
+     */
+    public function setOptions(array $options): UserPreference
+    {
+        $this->options = $options;
+
+        return $this;
+    }
+
+    /**
+     * Returns an array with options for the FormType.
+     *
+     * @return array
+     */
+    public function getOptions(): array
+    {
+        return $this->options;
+    }
+
+    public function getLabel(): ?string
+    {
+        if (isset($this->options['label'])) {
+            return $this->options['label'];
+        }
+
+        return $this->name;
     }
 }

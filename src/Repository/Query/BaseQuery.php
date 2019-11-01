@@ -9,6 +9,11 @@
 
 namespace App\Repository\Query;
 
+use App\Entity\Team;
+use App\Entity\User;
+use App\Utils\SearchTerm;
+use Symfony\Component\Form\FormErrorIterator;
+
 /**
  * Base class for advanced Repository queries.
  */
@@ -20,10 +25,26 @@ class BaseQuery
     public const DEFAULT_PAGESIZE = 50;
     public const DEFAULT_PAGE = 1;
 
+    /**
+     * @deprecated since 1.4, will be removed with 1.6
+     */
     public const RESULT_TYPE_OBJECTS = 'Objects';
+    /**
+     * @deprecated since 1.4, will be removed with 1.6
+     */
     public const RESULT_TYPE_PAGER = 'PagerFanta';
+    /**
+     * @deprecated since 1.4, will be removed with 1.6
+     */
     public const RESULT_TYPE_QUERYBUILDER = 'QueryBuilder';
 
+    private $defaults = [
+        'page' => self::DEFAULT_PAGE,
+        'pageSize' => self::DEFAULT_PAGESIZE,
+        'orderBy' => 'id',
+        'order' => self::ORDER_ASC,
+        'searchTerm' => null,
+    ];
     /**
      * @var int
      */
@@ -42,8 +63,52 @@ class BaseQuery
     private $order = self::ORDER_ASC;
     /**
      * @var string
+     * @deprecated since 1.4, will be removed with 1.6
      */
     private $resultType = self::RESULT_TYPE_PAGER;
+    /**
+     * @var User
+     */
+    private $currentUser;
+    /**
+     * @var Team[]
+     */
+    private $teams = [];
+    /**
+     * @var SearchTerm|null
+     */
+    private $searchTerm;
+
+    public function addTeam(Team $team): self
+    {
+        $this->teams[$team->getId()] = $team;
+
+        return $this;
+    }
+
+    /**
+     * @return Team[]
+     */
+    public function getTeams(): array
+    {
+        return array_values($this->teams);
+    }
+
+    public function getCurrentUser(): ?User
+    {
+        return $this->currentUser;
+    }
+
+    /**
+     * @param User $user
+     * @return self
+     */
+    public function setCurrentUser(User $user)
+    {
+        $this->currentUser = $user;
+
+        return $this;
+    }
 
     /**
      * @return int
@@ -55,7 +120,7 @@ class BaseQuery
 
     /**
      * @param int $page
-     * @return $this
+     * @return self
      */
     public function setPage($page)
     {
@@ -71,7 +136,7 @@ class BaseQuery
 
     /**
      * @param int $pageSize
-     * @return $this
+     * @return self
      */
     public function setPageSize($pageSize)
     {
@@ -91,7 +156,7 @@ class BaseQuery
      * You need to validate carefully if this value is used from a user-input.
      *
      * @param string $orderBy
-     * @return $this
+     * @return self
      */
     public function setOrderBy($orderBy)
     {
@@ -107,7 +172,7 @@ class BaseQuery
 
     /**
      * @param string $order
-     * @return $this
+     * @return self
      */
     public function setOrder($order)
     {
@@ -124,43 +189,69 @@ class BaseQuery
      */
     public function getResultType()
     {
+        @trigger_error('BaseQuery::getResultType() is deprecated and will be removed with 1.6', E_USER_DEPRECATED);
+
         return $this->resultType;
     }
 
-    /**
-     * @deprecated since 1.0
-     * @param string $resultType
-     * @return $this
-     * @throws \InvalidArgumentException
-     */
-    public function setResultType(string $resultType)
+    public function hasSearchTerm(): bool
     {
-        $allowed = [self::RESULT_TYPE_PAGER, self::RESULT_TYPE_QUERYBUILDER, self::RESULT_TYPE_OBJECTS];
+        return null !== $this->searchTerm;
+    }
 
-        if (!in_array($resultType, $allowed)) {
-            throw new \InvalidArgumentException('Unsupported query result type');
+    public function getSearchTerm(): ?SearchTerm
+    {
+        return $this->searchTerm;
+    }
+
+    /**
+     * @param SearchTerm|null $searchTerm
+     * @return self
+     */
+    public function setSearchTerm(?SearchTerm $searchTerm)
+    {
+        $this->searchTerm = $searchTerm;
+
+        return $this;
+    }
+
+    protected function set($name, $value)
+    {
+        $method = 'set' . ucfirst($name);
+        if (method_exists($this, $method)) {
+            $this->{$method}($value);
+        } elseif (property_exists($this, $name)) {
+            $this->$name = $value;
         }
+    }
 
-        $this->resultType = $resultType;
+    /**
+     * @param array $defaults
+     * @return self
+     */
+    protected function setDefaults(array $defaults)
+    {
+        $this->defaults = array_merge($this->defaults, $defaults);
+        foreach ($this->defaults as $key => $value) {
+            $this->set($key, $value);
+        }
 
         return $this;
     }
 
     /**
-     * Returns whether the query has changed fields, compared to the original state.
-     *
-     * @return bool
+     * @param FormErrorIterator $errors
+     * @return self
      */
-    public function isDirty(): bool
+    public function resetByFormError(FormErrorIterator $errors)
     {
-        if ($this->page !== self::DEFAULT_PAGE) {
-            return true;
+        foreach ($errors as $error) {
+            $key = $error->getOrigin()->getName();
+            if (array_key_exists($key, $this->defaults)) {
+                $this->set($key, $this->defaults[$key]);
+            }
         }
 
-        if ($this->pageSize !== self::DEFAULT_PAGESIZE) {
-            return true;
-        }
-
-        return false;
+        return $this;
     }
 }

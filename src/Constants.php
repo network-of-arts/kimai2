@@ -10,32 +10,32 @@
 namespace App;
 
 /**
- * Some very global constants for Kimai.
+ * Some "very" global constants for Kimai.
  */
 class Constants
 {
     /**
-     * The software name
-     */
-    public const SOFTWARE = 'Kimai 2';
-    /**
      * The current release version
      */
-    public const VERSION = '1.1';
-    /**
-     * The release name, will only change for new major version
-     */
-    public const NAME = 'Ayumi';
+    public const VERSION = '1.4.2';
     /**
      * The current release status, either "stable" or "dev"
      */
     public const STATUS = 'stable';
     /**
+     * The software name
+     */
+    public const SOFTWARE = 'Kimai 2';
+    /**
+     * The release name, will only change for new major version
+     */
+    public const NAME = 'Ayumi';
+    /**
      * Used in multiple views
      */
     public const GITHUB = 'https://github.com/kevinpapst/kimai2/';
     /**
-     * Used in multiple views
+     * Homepage, used in multiple views
      */
     public const HOMEPAGE = 'https://www.kimai.org';
 }

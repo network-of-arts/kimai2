@@ -10,7 +10,7 @@
 namespace App\Event;
 
 use App\Entity\Project;
-use Symfony\Component\EventDispatcher\Event;
+use Symfony\Contracts\EventDispatcher\Event;
 
 /**
  * This event can be used, to dynamically add meta fields to projects
@@ -20,7 +20,7 @@ final class ProjectMetaDefinitionEvent extends Event
     /**
      * @var Project
      */
-    protected $entity;
+    private $entity;
 
     public function __construct(Project $entity)
     {

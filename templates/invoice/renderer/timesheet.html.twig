@@ -72,9 +72,9 @@
                 {% if model.query.user is empty %}
                     <td>{{ widgets.username(entry.user) }}</td>
                 {% endif %}
-                <td>
+                <td contenteditable="true">
                     {% if entry.description is not empty %}
-                        {{ entry.description }}
+                        {{ entry.description|nl2br }}
                     {% else %}
                         {{ entry.activity.name }} / {{ entry.project.name }}
                     {% endif %}
@@ -86,6 +86,9 @@
             <tfoot>
             <tr>
                 <th></th>
+                {% if model.query.user is empty %}
+                <th></th>
+                {% endif %}
                 <th>{{ 'invoice.total_working_time'|trans }}</th>
                 <th>{{ model.calculator.timeWorked|duration }}</th>
             </tr>

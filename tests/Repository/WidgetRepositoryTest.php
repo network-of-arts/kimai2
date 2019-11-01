@@ -9,9 +9,12 @@
 
 namespace App\Tests\Repository;
 
+use App\Entity\User;
 use App\Repository\TimesheetRepository;
 use App\Repository\WidgetRepository;
-use App\Security\CurrentUser;
+use App\Tests\Mocks\Security\CurrentUserFactory;
+use App\Widget\Type\CompoundChart;
+use App\Widget\WidgetException;
 use PHPUnit\Framework\TestCase;
 
 /**
@@ -22,7 +25,7 @@ class WidgetRepositoryTest extends TestCase
     public function testHasWidget()
     {
         $repoMock = $this->getMockBuilder(TimesheetRepository::class)->disableOriginalConstructor()->getMock();
-        $userMock = $this->getMockBuilder(CurrentUser::class)->disableOriginalConstructor()->getMock();
+        $userMock = (new CurrentUserFactory($this))->create(new User());
 
         $sut = new WidgetRepository($repoMock, $userMock, ['test' => []]);
 
@@ -30,42 +33,39 @@ class WidgetRepositoryTest extends TestCase
         $this->assertTrue($sut->has('test'));
     }
 
-    /**
-     * @expectedException \InvalidArgumentException
-     * @expectedExceptionMessage Cannot find widget "foo".
-     */
     public function testGetWidgetThrowsExceptionOnNonExistingWidget()
     {
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('Cannot find widget "foo".');
+
         $repoMock = $this->getMockBuilder(TimesheetRepository::class)->disableOriginalConstructor()->getMock();
-        $userMock = $this->getMockBuilder(CurrentUser::class)->disableOriginalConstructor()->getMock();
+        $userMock = (new CurrentUserFactory($this))->create(new User());
 
         $sut = new WidgetRepository($repoMock, $userMock, ['test' => []]);
         $sut->get('foo');
     }
 
-    /**
-     * @expectedException \App\Widget\WidgetException
-     * @expectedExceptionMessage Unknown widget type "\App\Widget\Type\FooBar"
-     */
     public function testGetWidgetThrowsExceptionOnInvalidType()
     {
+        $this->expectException(WidgetException::class);
+        $this->expectExceptionMessage('Unknown widget type "FooBar"');
+
         $repoMock = $this->getMockBuilder(TimesheetRepository::class)->disableOriginalConstructor()->getMock();
-        $userMock = $this->getMockBuilder(CurrentUser::class)->disableOriginalConstructor()->getMock();
+        $userMock = (new CurrentUserFactory($this))->create(new User());
 
         $sut = new WidgetRepository($repoMock, $userMock, ['test' => ['type' => 'FooBar', 'user' => false]]);
         $sut->get('test');
     }
 
-    /**
-     * @expectedException \App\Widget\WidgetException
-     * @expectedExceptionMessage Invalid widget type "\App\Widget\Type\CompoundChart" does not extend AbstractWidgetType
-     */
     public function testGetWidgetTriggersExceptionOnWrongClass()
     {
-        $repoMock = $this->getMockBuilder(TimesheetRepository::class)->disableOriginalConstructor()->getMock();
-        $userMock = $this->getMockBuilder(CurrentUser::class)->disableOriginalConstructor()->getMock();
+        $this->expectException(WidgetException::class);
+        $this->expectExceptionMessage('Widget type "App\Widget\Type\CompoundChart" is not an instance of "App\Widget\Type\AbstractWidgetType"');
 
-        $sut = new WidgetRepository($repoMock, $userMock, ['test' => ['type' => 'CompoundChart', 'user' => false]]);
+        $repoMock = $this->getMockBuilder(TimesheetRepository::class)->disableOriginalConstructor()->getMock();
+        $userMock = (new CurrentUserFactory($this))->create(new User());
+
+        $sut = new WidgetRepository($repoMock, $userMock, ['test' => ['type' => CompoundChart::class, 'user' => false]]);
         $sut->get('test');
     }
 
@@ -77,7 +77,7 @@ class WidgetRepositoryTest extends TestCase
         $repoMock = $this->getMockBuilder(TimesheetRepository::class)->disableOriginalConstructor()->getMock();
         $repoMock->method('getStatistic')->willReturn($data);
 
-        $userMock = $this->getMockBuilder(CurrentUser::class)->disableOriginalConstructor()->getMock();
+        $userMock = (new CurrentUserFactory($this))->create(new User());
 
         $widget = [
             'color' => 'sunny',

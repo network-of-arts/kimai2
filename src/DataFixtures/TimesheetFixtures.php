@@ -73,11 +73,13 @@ class TimesheetFixtures extends Fixture implements DependentFixtureInterface
         // by using array_pop we make sure that at least one activity has NO entry!
         array_pop($activities);
 
+        $all = 0;
+
         foreach ($allUser as $user) {
             // random amount of timesheet entries for every user
             $timesheetForUser = rand(self::MIN_TIMESHEETS_PER_USER, self::MAX_TIMESHEETS_PER_USER);
             for ($i = 1; $i <= $timesheetForUser; $i++) {
-                if ($i > self::MAX_TIMESHEETS_TOTAL) {
+                if ($all > self::MAX_TIMESHEETS_TOTAL) {
                     break;
                 }
 
@@ -96,9 +98,11 @@ class TimesheetFixtures extends Fixture implements DependentFixtureInterface
                     true
                 );
 
+                $all++;
+
                 $manager->persist($entry);
 
-                if ($i % self::BATCH_SIZE == 0) {
+                if ($i % self::BATCH_SIZE === 0) {
                     $manager->flush();
                     $manager->clear(Timesheet::class);
                 }

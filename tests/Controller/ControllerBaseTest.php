@@ -147,7 +147,7 @@ abstract class ControllerBaseTest extends WebTestCase
             $client->getResponse()->isSuccessful(),
             'Access is not denied for URL: ' . $client->getRequest()->getUri()
         );
-        self::assertContains(
+        self::assertStringContainsString(
             'Symfony\Component\Security\Core\Exception\AccessDeniedException',
             $client->getResponse()->getContent(),
             'Could not find AccessDeniedException in response'
@@ -168,7 +168,7 @@ abstract class ControllerBaseTest extends WebTestCase
 
     protected function assertMainContentClass(Client $client, string $classname)
     {
-        self::assertContains('<section class="content ' . $classname . '">', $client->getResponse()->getContent());
+        self::assertStringContainsString('<section class="content ' . $classname . '">', $client->getResponse()->getContent());
     }
 
     /**
@@ -176,7 +176,7 @@ abstract class ControllerBaseTest extends WebTestCase
      */
     protected function assertHasDataTable(Client $client)
     {
-        self::assertContains('<table class="table table-striped table-hover dataTable" role="grid" data-reload-event="', $client->getResponse()->getContent());
+        self::assertStringContainsString('<table class="table table-striped table-hover dataTable" role="grid" data-reload-event="', $client->getResponse()->getContent());
     }
 
     /**
@@ -185,9 +185,9 @@ abstract class ControllerBaseTest extends WebTestCase
     protected static function assertHasProgressbar(Client $client)
     {
         $content = $client->getResponse()->getContent();
-        self::assertContains('<div class="progress-bar progress-bar-', $content);
-        self::assertContains('" role="progressbar" aria-valuenow="', $content);
-        self::assertContains('" aria-valuemin="0" aria-valuemax="100" style="width: ', $content);
+        self::assertStringContainsString('<div class="progress-bar progress-bar-', $content);
+        self::assertStringContainsString('" role="progressbar" aria-valuenow="', $content);
+        self::assertStringContainsString('" aria-valuemin="0" aria-valuemax="100" style="width: ', $content);
     }
 
     /**
@@ -208,14 +208,16 @@ abstract class ControllerBaseTest extends WebTestCase
     protected function assertPageActions(Client $client, array $buttons)
     {
         $node = $client->getCrawler()->filter('section.content-header div.breadcrumb div.box-tools div.btn-group a.btn');
-        self::assertEquals(count($buttons), $node->count());
 
+        /** @var \DOMElement $element */
         foreach ($node->getIterator() as $element) {
             $expectedClass = str_replace('btn btn-default btn-', '', $element->getAttribute('class'));
             self::assertArrayHasKey($expectedClass, $buttons);
             $expectedUrl = $buttons[$expectedClass];
             self::assertEquals($expectedUrl, $element->getAttribute('href'));
         }
+
+        self::assertEquals(count($buttons), $node->count(), 'Invalid amount of page actions');
     }
 
     /**
@@ -254,8 +256,10 @@ abstract class ControllerBaseTest extends WebTestCase
             $validation = $list->filter('li.text-danger');
             if (count($validation) < 1) {
                 // decorated form fields with icon have a different html structure, see kimai-theme.html.twig
-                $classes = $field->parents()->getNode(1)->getAttribute('class');
-                self::assertContains('has-error', $classes, 'Form field has no validation message: ' . $name);
+                /** @var \DOMElement $listMsg */
+                $listMsg = $field->parents()->getNode(1);
+                $classes = $listMsg->getAttribute('class');
+                self::assertStringContainsString('has-error', $classes, 'Form field has no validation message: ' . $name);
             }
         }
     }
@@ -275,7 +279,7 @@ abstract class ControllerBaseTest extends WebTestCase
     protected function assertCalloutWidgetWithMessage(Client $client, string $message)
     {
         $node = $client->getCrawler()->filter('div.callout.callout-warning.lead');
-        self::assertContains($message, $node->text());
+        self::assertStringContainsString($message, $node->text());
     }
 
     protected function assertHasFlashDeleteSuccess(Client $client)
@@ -297,7 +301,7 @@ abstract class ControllerBaseTest extends WebTestCase
         $node = $client->getCrawler()->filter('div.alert.alert-success.alert-dismissible');
         self::assertNotEmpty($node->text());
         if (null !== $message) {
-            self::assertContains($message, $node->text());
+            self::assertStringContainsString($message, $node->text());
         }
     }
 
@@ -310,7 +314,7 @@ abstract class ControllerBaseTest extends WebTestCase
         $node = $client->getCrawler()->filter('div.alert.alert-error.alert-dismissible');
         self::assertNotEmpty($node->text());
         if (null !== $message) {
-            self::assertContains($message, $node->text());
+            self::assertStringContainsString($message, $node->text());
         }
     }
 

@@ -36,7 +36,6 @@ class Project implements EntityWithMetaFields
      * @ORM\GeneratedValue(strategy="IDENTITY")
      */
     private $id;
-
     /**
      * @var Customer
      *
@@ -45,16 +44,16 @@ class Project implements EntityWithMetaFields
      * @Assert\NotNull()
      */
     private $customer;
-
     /**
      * @var string
      *
-     * @ORM\Column(name="name", type="string", length=255, nullable=false)
+     * Do not increase length to more than 190 chars, otherwise "Index column size too large." will be triggered.
+     *
+     * @ORM\Column(name="name", type="string", length=150, nullable=false)
      * @Assert\NotNull()
-     * @Assert\Length(min=2, max=255)
+     * @Assert\Length(min=2, max=150)
      */
     private $name;
-
     /**
      * @var string
      *
@@ -62,14 +61,18 @@ class Project implements EntityWithMetaFields
      * @Assert\Length(max=20)
      */
     private $orderNumber;
-
+    /**
+     * @var \DateTime
+     *
+     * @ORM\Column(name="order_date", type="datetime", nullable=true)
+     */
+    private $orderDate;
     /**
      * @var string
      *
-     * @ORM\Column(name="comment", type="text", length=65535, nullable=true)
+     * @ORM\Column(name="comment", type="text", nullable=true)
      */
     private $comment;
-
     /**
      * @var bool
      *
@@ -90,9 +93,26 @@ class Project implements EntityWithMetaFields
      */
     private $meta;
 
+    /**
+     * @var Team[]|ArrayCollection
+     *
+     * @ORM\ManyToMany(targetEntity="Team", cascade={"persist"}, inversedBy="projects")
+     * @ORM\JoinTable(
+     *  name="kimai2_projects_teams",
+     *  joinColumns={
+     *      @ORM\JoinColumn(name="project_id", referencedColumnName="id", onDelete="CASCADE")
+     *  },
+     *  inverseJoinColumns={
+     *      @ORM\JoinColumn(name="team_id", referencedColumnName="id", onDelete="CASCADE")
+     *  }
+     * )
+     */
+    private $teams;
+
     public function __construct()
     {
         $this->meta = new ArrayCollection();
+        $this->teams = new ArrayCollection();
     }
 
     public function getId(): ?int
@@ -147,29 +167,39 @@ class Project implements EntityWithMetaFields
         return $this;
     }
 
+    public function isVisible(): bool
+    {
+        return $this->visible;
+    }
+
     /**
-     * @return bool
+     * @deprecated since 1.4, use isVisible() instead
      */
     public function getVisible(): bool
     {
         return $this->visible;
     }
 
-    /**
-     * @return string|null
-     */
     public function getOrderNumber(): ?string
     {
         return $this->orderNumber;
     }
 
-    /**
-     * @param string $orderNumber
-     * @return Project
-     */
-    public function setOrderNumber($orderNumber): Project
+    public function setOrderNumber(?string $orderNumber): Project
     {
         $this->orderNumber = $orderNumber;
+
+        return $this;
+    }
+
+    public function getOrderDate(): ?\DateTime
+    {
+        return $this->orderDate;
+    }
+
+    public function setOrderDate(?\DateTime $orderDate): Project
+    {
+        $this->orderDate = $orderDate;
 
         return $this;
     }
@@ -201,7 +231,7 @@ class Project implements EntityWithMetaFields
     public function getMetaField(string $name): ?MetaTableTypeInterface
     {
         foreach ($this->meta as $field) {
-            if ($field->getName() === $name) {
+            if (strtolower($field->getName()) === strtolower($name)) {
                 return $field;
             }
         }
@@ -221,6 +251,33 @@ class Project implements EntityWithMetaFields
         $current->merge($meta);
 
         return $this;
+    }
+
+    public function addTeam(Team $team)
+    {
+        if ($this->teams->contains($team)) {
+            return;
+        }
+
+        $this->teams->add($team);
+        $team->addProject($this);
+    }
+
+    public function removeTeam(Team $team)
+    {
+        if (!$this->teams->contains($team)) {
+            return;
+        }
+        $this->teams->removeElement($team);
+        $team->removeProject($this);
+    }
+
+    /**
+     * @return Collection<Team>
+     */
+    public function getTeams(): Collection
+    {
+        return $this->teams;
     }
 
     /**

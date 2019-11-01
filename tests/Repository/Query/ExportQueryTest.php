@@ -24,7 +24,6 @@ class ExportQueryTest extends BaseQueryTest
     {
         $sut = new ExportQuery();
 
-        $this->assertResultType($sut);
         $this->assertPage($sut);
         $this->assertPageSize($sut);
         $this->assertOrderBy($sut, 'begin');
@@ -37,6 +36,15 @@ class ExportQueryTest extends BaseQueryTest
         $this->assertState($sut);
         $this->assertExported($sut);
         $this->assertType($sut);
+        $this->assertMarkAsExported($sut);
+    }
+
+    protected function assertMarkAsExported(ExportQuery $sut)
+    {
+        $this->assertFalse($sut->isMarkAsExported());
+
+        $sut->setMarkAsExported(true);
+        $this->assertTrue($sut->isMarkAsExported());
     }
 
     protected function assertUser(ExportQuery $sut)

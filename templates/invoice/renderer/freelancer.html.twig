@@ -80,7 +80,7 @@
                     {% set duration = entry.duration|duration %}
                     {% if entry.fixedRate is not null %}
                         {% set rate = entry.fixedRate %}
-                        {% set duration = 1 %}
+                        {% set duration = entry.amount %}
                     {% elseif entry.hourlyRate is not null %}
                         {% set rate = entry.hourlyRate %}
                     {% else %}
@@ -90,7 +90,7 @@
                     <tr>
                         <td contenteditable="true">
                             {% if entry.description is not empty %}
-                                {{ entry.description }}
+                                {{ entry.description|nl2br }}
                             {% else %}
                                 {{ entry.activity.name }} / {{ entry.project.name }}
                             {% endif %}

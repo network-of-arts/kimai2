@@ -12,8 +12,10 @@ namespace App\Tests\Controller;
 use App\DataFixtures\UserFixtures;
 use App\Entity\User;
 use App\Entity\UserPreference;
+use App\Tests\DataFixtures\TeamFixtures;
 use App\Tests\DataFixtures\TimesheetFixtures;
 use Symfony\Bundle\FrameworkBundle\Client;
+use Symfony\Component\DomCrawler\Field\ChoiceFormField;
 use Symfony\Component\Security\Core\Encoder\EncoderFactoryInterface;
 
 /**
@@ -33,7 +35,7 @@ class ProfileControllerTest extends ControllerBaseTest
         $this->assertTrue($client->getResponse()->isSuccessful());
 
         $this->assertHasNoEntriesWithFilter($client);
-        $this->assertHasProfileBox($client, UserFixtures::USERNAME_USER);
+        $this->assertHasProfileBox($client, 'John Doe');
         $this->assertHasAboutMeBox($client, UserFixtures::USERNAME_USER);
     }
 
@@ -62,11 +64,11 @@ class ProfileControllerTest extends ControllerBaseTest
 
         foreach ($dates as $start) {
             $year = $start->format('Y');
-            $this->assertContains('<h3 class="box-title">' . $year . '</h3>', $content);
-            $this->assertContains('var userProfileChart' . $year . ' = new Chart(', $content);
+            $this->assertStringContainsString('<h3 class="box-title">' . $year . '</h3>', $content);
+            $this->assertStringContainsString('var userProfileChart' . $year . ' = new Chart(', $content);
         }
 
-        $this->assertHasProfileBox($client, UserFixtures::USERNAME_USER);
+        $this->assertHasProfileBox($client, 'John Doe');
         $this->assertHasAboutMeBox($client, UserFixtures::USERNAME_USER);
     }
 
@@ -74,7 +76,7 @@ class ProfileControllerTest extends ControllerBaseTest
     {
         $profileBox = $client->getCrawler()->filter('div.box-body.box-profile');
         $this->assertEquals(1, $profileBox->count());
-        $profileAvatar = $profileBox->filter('img.profile-user-img');
+        $profileAvatar = $profileBox->filter('img.img-circle');
         $this->assertEquals(1, $profileAvatar->count());
         $alt = $profileAvatar->attr('alt');
 
@@ -85,8 +87,8 @@ class ProfileControllerTest extends ControllerBaseTest
     {
         $content = $client->getResponse()->getContent();
 
-        $this->assertContains('<h3 class="box-title">About me</h3>', $content);
-        $this->assertContains('<span class="pull-right badge bg-blue">' . $username . '</span>', $content);
+        $this->assertStringContainsString('<h3 class="box-title">About me</h3>', $content);
+        $this->assertStringContainsString('<span class="pull-right badge bg-blue">' . $username . '</span>', $content);
     }
 
     public function getTabTestData()
@@ -95,7 +97,7 @@ class ProfileControllerTest extends ControllerBaseTest
 
         return [
             [User::ROLE_USER, UserFixtures::USERNAME_USER, ['#settings', '#password', '#api-token']],
-            [User::ROLE_SUPER_ADMIN, UserFixtures::USERNAME_SUPER_ADMIN, array_merge($userTabs, ['#roles'])],
+            [User::ROLE_SUPER_ADMIN, UserFixtures::USERNAME_SUPER_ADMIN, array_merge($userTabs, ['#teams', '#roles'])],
         ];
     }
 
@@ -111,6 +113,8 @@ class ProfileControllerTest extends ControllerBaseTest
         $tabs = $client->getCrawler()->filter('div.nav-tabs-custom ul.nav-tabs li');
         $this->assertEquals(count($expectedTabs), $tabs->count());
         $foundTabs = [];
+
+        /** @var \DOMElement $tab */
         foreach ($tabs->filter('a') as $tab) {
             $foundTabs[] = $tab->getAttribute('href');
         }
@@ -220,8 +224,8 @@ class ProfileControllerTest extends ControllerBaseTest
         $client->submit($form, [
             'user_password' => [
                 'plainPassword' => [
-                    'first' => 'test123',
-                    'second' => 'test123',
+                    'first' => 'test1234',
+                    'second' => 'test1234',
                 ]
             ]
         ]);
@@ -236,7 +240,7 @@ class ProfileControllerTest extends ControllerBaseTest
         $user = $this->getUserByRole($em, User::ROLE_USER);
 
         $this->assertFalse($passwordEncoder->getEncoder($user)->isPasswordValid($user->getPassword(), UserFixtures::DEFAULT_PASSWORD, $user->getSalt()));
-        $this->assertTrue($passwordEncoder->getEncoder($user)->isPasswordValid($user->getPassword(), 'test123', $user->getSalt()));
+        $this->assertTrue($passwordEncoder->getEncoder($user)->isPasswordValid($user->getPassword(), 'test1234', $user->getSalt()));
     }
 
     public function testApiTokenAction()
@@ -298,8 +302,8 @@ class ProfileControllerTest extends ControllerBaseTest
         $form = $client->getCrawler()->filter('form[name=user_roles]')->form();
         $client->submit($form, [
             'user_roles[roles]' => [
-                'ROLE_TEAMLEAD',
-                'ROLE_SUPER_ADMIN',
+                0 => 'ROLE_TEAMLEAD',
+                2 => 'ROLE_SUPER_ADMIN',
             ]
         ]);
 
@@ -313,6 +317,52 @@ class ProfileControllerTest extends ControllerBaseTest
         $user = $this->getUserByRole($em, User::ROLE_USER);
 
         $this->assertEquals(['ROLE_TEAMLEAD', 'ROLE_SUPER_ADMIN', 'ROLE_USER'], $user->getRoles());
+    }
+
+    public function testTeamsActionIsSecured()
+    {
+        $this->assertUrlIsSecured('/profile/' . UserFixtures::USERNAME_USER . '/teams');
+        $this->assertUrlIsSecuredForRole(User::ROLE_TEAMLEAD, '/profile/' . UserFixtures::USERNAME_USER . '/teams');
+    }
+
+    public function testTeamsAction()
+    {
+        $client = $this->getClientForAuthenticatedUser(User::ROLE_SUPER_ADMIN);
+        $em = $client->getContainer()->get('doctrine.orm.entity_manager');
+
+        /** @var User $user */
+        $user = $this->getUserByRole($em, User::ROLE_USER);
+
+        $fixture = new TeamFixtures();
+        $fixture->setAmount(3);
+        $fixture->setAddCustomer(true);
+        $fixture->setAddUser(false);
+        $fixture->addUserToIgnore($user);
+        $this->importFixture($em, $fixture);
+
+        $this->request($client, '/profile/' . UserFixtures::USERNAME_USER . '/teams');
+
+        /** @var User $user */
+        $user = $this->getUserByRole($em, User::ROLE_USER);
+        $this->assertEquals([], $user->getTeams()->toArray());
+
+        $form = $client->getCrawler()->filter('form[name=user_teams]')->form();
+        /** @var ChoiceFormField $team */
+        $team = $form->get('user_teams[teams][0]');
+        $team->tick();
+
+        $client->submit($form);
+
+        $this->assertIsRedirect($client, $this->createUrl('/profile/' . urlencode(UserFixtures::USERNAME_USER) . '/teams'));
+        $client->followRedirect();
+        $this->assertTrue($client->getResponse()->isSuccessful());
+
+        $this->assertHasFlashSuccess($client);
+
+        $em = $client->getContainer()->get('doctrine.orm.entity_manager');
+        $user = $this->getUserByRole($em, User::ROLE_USER);
+
+        $this->assertEquals(1, $user->getTeams()->count());
     }
 
     public function getPreferencesTestData()

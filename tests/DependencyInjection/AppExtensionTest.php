@@ -10,6 +10,7 @@
 namespace App\Tests\DependencyInjection;
 
 use App\DependencyInjection\AppExtension;
+use PHPUnit\Framework\Error\Notice;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
 
@@ -23,7 +24,7 @@ class AppExtensionTest extends TestCase
      */
     private $extension;
 
-    public function setUp()
+    protected function setUp(): void
     {
         parent::setUp();
         $this->extension = new AppExtension();
@@ -95,13 +96,13 @@ class AppExtensionTest extends TestCase
                     'timezone' => null,
                     'language' => 'en',
                     'theme' => null,
+                    'currency' => 'EUR',
                 ]
             ],
-
             'kimai.theme' => [
                 'active_warning' => 3,
                 'box_color' => 'green',
-                'select_type' => null,
+                'select_type' => 'selectpicker',
                 'show_about' => true,
                 'chart' => [
                     'background_color' => 'rgba(0,115,183,0.7)',
@@ -114,16 +115,17 @@ class AppExtensionTest extends TestCase
                     'mini' => null,
                     'company' => null,
                     'title' => null,
+                    'translation' => null,
                 ],
+                'auto_reload_datatable' => false,
+                'autocomplete_chars' => 3,
             ],
-            'kimai.theme.select_type' => null,
+            'kimai.theme.select_type' => 'selectpicker',
             'kimai.theme.show_about' => true,
-
             'kimai.fosuser' => [
                 'registration' => true,
                 'password_reset' => true,
             ],
-
             'kimai.timesheet' => [
                 'mode' => 'default',
                 'markdown_content' => false,
@@ -171,6 +173,7 @@ class AppExtensionTest extends TestCase
                 'ROLE_ADMIN' => [],
                 'ROLE_SUPER_ADMIN' => [],
             ],
+            'kimai.i18n_domains' => []
         ];
 
         // nasty parameter, should be removed!!!
@@ -231,13 +234,14 @@ class AppExtensionTest extends TestCase
     }
 
     /**
-     * @expectedException \PHPUnit\Framework\Error\Notice
-     * @expectedExceptionMessage Found ambiguous configuration. Please remove "kimai.timesheet.duration_only" and set "kimai.timesheet.mode" instead.
      * @expectedDeprecation Configuration "kimai.timesheet.duration_only" is deprecated, please remove it
      * @group legacy
      */
     public function testDurationOnlyDeprecationIsTriggered()
     {
+        $this->expectException(Notice::class);
+        $this->expectExceptionMessage('Found ambiguous configuration. Please remove "kimai.timesheet.duration_only" and set "kimai.timesheet.mode" instead.');
+
         $minConfig = $this->getMinConfig();
         $minConfig['kimai']['timesheet']['duration_only'] = true;
         $minConfig['kimai']['timesheet']['mode'] = 'punch';
@@ -319,12 +323,39 @@ class AppExtensionTest extends TestCase
         $this->assertEquals('(&(objectClass=inetOrgPerson))', $ldapConfig['user']['filter']);
     }
 
-    /**
-     * @expectedException \PHPUnit\Framework\Error\Notice
-     * @expectedExceptionMessage Found invalid "kimai" configuration: The child node "data_dir" at path "kimai" must be configured.
-     */
+    public function testTranslationOverwritesEmpty()
+    {
+        $minConfig = $this->getMinConfig();
+        $this->extension->load($minConfig, $container = $this->getContainer());
+
+        $config = $container->getParameter('kimai.i18n_domains');
+        $this->assertEquals([], $config);
+    }
+
+    public function testTranslationOverwrites()
+    {
+        $minConfig = $this->getMinConfig();
+        $minConfig['kimai']['industry'] = [
+            'translation' => 'xxxx',
+        ];
+        $minConfig['kimai']['theme'] = [
+            'branding' => [
+                'translation' => 'yyyy',
+            ]
+        ];
+
+        $this->extension->load($minConfig, $container = $this->getContainer());
+
+        $config = $container->getParameter('kimai.i18n_domains');
+        // oder is important, theme/installation specific translations win
+        $this->assertEquals(['yyyy', 'xxxx'], $config);
+    }
+
     public function testInvalidConfiguration()
     {
+        $this->expectException(Notice::class);
+        $this->expectExceptionMessage('Found invalid "kimai" configuration: The child node "data_dir" at path "kimai" must be configured.');
+
         $this->extension->load([], $container = $this->getContainer());
     }
 

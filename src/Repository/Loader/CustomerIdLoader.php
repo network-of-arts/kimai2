@@ -12,6 +12,9 @@ namespace App\Repository\Loader;
 use App\Entity\Customer;
 use Doctrine\ORM\EntityManagerInterface;
 
+/**
+ * @internal
+ */
 final class CustomerIdLoader implements LoaderInterface
 {
     /**
@@ -39,6 +42,15 @@ final class CustomerIdLoader implements LoaderInterface
         $qb->select('PARTIAL c.{id}', 'meta')
             ->from(Customer::class, 'c')
             ->leftJoin('c.meta', 'meta')
+            ->andWhere($qb->expr()->in('c.id', $ids))
+            ->getQuery()
+            ->execute();
+
+        $qb = $em->createQueryBuilder();
+        $qb->select('PARTIAL c.{id}', 'teams', 'teamlead')
+            ->from(Customer::class, 'c')
+            ->leftJoin('c.teams', 'teams')
+            ->leftJoin('teams.teamlead', 'teamlead')
             ->andWhere($qb->expr()->in('c.id', $ids))
             ->getQuery()
             ->execute();

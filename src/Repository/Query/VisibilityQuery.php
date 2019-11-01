@@ -43,31 +43,11 @@ class VisibilityQuery extends BaseQuery
      */
     public function setVisibility($visibility)
     {
-        if (!is_int($visibility) && $visibility != (int) $visibility) {
-            return $this;
-        }
-
         $visibility = (int) $visibility;
         if (in_array($visibility, self::ALLOWED_VISIBILITY_STATES, true)) {
             $this->visibility = $visibility;
         }
 
         return $this;
-    }
-
-    /**
-     * {@inheritdoc}
-     */
-    public function isDirty(): bool
-    {
-        if (parent::isDirty()) {
-            return true;
-        }
-
-        if ($this->visibility !== self::SHOW_VISIBLE) {
-            return true;
-        }
-
-        return false;
     }
 }

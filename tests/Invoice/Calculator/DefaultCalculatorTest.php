@@ -9,11 +9,13 @@
 
 namespace App\Tests\Invoice\Calculator;
 
+use App\Entity\Activity;
 use App\Entity\Customer;
 use App\Entity\InvoiceTemplate;
 use App\Entity\Timesheet;
 use App\Invoice\Calculator\DefaultCalculator;
-use App\Model\InvoiceModel;
+use App\Invoice\InvoiceModel;
+use App\Repository\Query\InvoiceQuery;
 
 /**
  * @covers \App\Invoice\Calculator\DefaultCalculator
@@ -33,16 +35,25 @@ class DefaultCalculatorTest extends AbstractCalculatorTest
         $template->setVat(19);
 
         $timesheet = new Timesheet();
+        $timesheet->setDescription('foo 1');
+        $timesheet->setBegin(new \DateTime());
         $timesheet->setDuration(3600);
         $timesheet->setRate(293.27);
+        $timesheet->setActivity(new Activity());
 
         $timesheet2 = new Timesheet();
+        $timesheet2->setDescription('foo 2');
+        $timesheet2->setBegin(new \DateTime());
         $timesheet2->setDuration(400);
         $timesheet2->setRate(84);
+        $timesheet2->setActivity(new Activity());
 
         $timesheet3 = new Timesheet();
+        $timesheet3->setDescription('foo 3');
+        $timesheet3->setBegin(new \DateTime());
         $timesheet3->setDuration(1800);
         $timesheet3->setRate(111.11);
+        $timesheet3->setActivity(new Activity());
 
         $entries = [$timesheet, $timesheet2, $timesheet3];
 
@@ -50,6 +61,7 @@ class DefaultCalculatorTest extends AbstractCalculatorTest
         $model->setCustomer($customer);
         $model->setTemplate($template);
         $model->setEntries($entries);
+        $model->setQuery(new InvoiceQuery());
 
         $sut = new DefaultCalculator();
         $sut->setModel($model);
@@ -60,6 +72,5 @@ class DefaultCalculatorTest extends AbstractCalculatorTest
         $this->assertEquals('EUR', $sut->getCurrency());
         $this->assertEquals(488.38, $sut->getSubtotal());
         $this->assertEquals(5800, $sut->getTimeWorked());
-        $this->assertEquals($entries, $sut->getEntries());
     }
 }

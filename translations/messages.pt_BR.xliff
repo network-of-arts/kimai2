@@ -300,10 +300,6 @@
                 <source>dashboard.subtitle</source>
                 <target>Bem vindo!</target>
             </trans-unit>
-            <trans-unit id="dashboard.you">
-                <source>dashboard.you</source>
-                <target>Minhas Estatísticas</target>
-            </trans-unit>
             <trans-unit id="dashboard.all">
                 <source>dashboard.all</source>
                 <target>Todos usuários</target>
@@ -327,10 +323,6 @@
             <trans-unit id="timesheet.title">
                 <source>timesheet.title</source>
                 <target>Meus Tempos</target>
-            </trans-unit>
-            <trans-unit id="timesheet.subtitle">
-                <source>timesheet.subtitle</source>
-                <target>Administrar minhas gravações de tempo</target>
             </trans-unit>
             <trans-unit id="timesheet.edit">
                 <source>timesheet.edit</source>
@@ -371,10 +363,6 @@
             <trans-unit id="profile.title">
                 <source>profile.title</source>
                 <target>Perfil do Usuário</target>
-            </trans-unit>
-            <trans-unit id="profile.subtitle">
-                <source>profile.subtitle</source>
-                <target>Editar minhas configurações</target>
             </trans-unit>
             <trans-unit id="profile.about_me">
                 <source>profile.about_me</source>
@@ -441,10 +429,6 @@
                 <source>calendar.title</source>
                 <target>Calendário</target>
             </trans-unit>
-            <trans-unit id="calendar.subtitle">
-                <source>calendar.subtitle</source>
-                <target>Visualize e gerencie seus dados de quadro de horários em um calendário</target>
-            </trans-unit>
 
             <!--
               Admin: Timesheet
@@ -453,10 +437,6 @@
                 <source>admin_timesheet.title</source>
                 <target>Quadro de Horários</target>
             </trans-unit>
-            <trans-unit id="admin_timesheet.subtitle">
-                <source>admin_timesheet.subtitle</source>
-                <target>Registros de todos os usuários</target>
-            </trans-unit>
 
             <!--
               Admin: Projects
@@ -464,10 +444,6 @@
             <trans-unit id="admin_project.title">
                 <source>admin_project.title</source>
                 <target>Projetos</target>
-            </trans-unit>
-            <trans-unit id="admin_project.subtitle">
-                <source>admin_project.subtitle</source>
-                <target>Um projeto combina atividades para um cliente em um grupo</target>
             </trans-unit>
             <trans-unit id="admin_project.short_stats">
                 <source>admin_project.short_stats</source>
@@ -484,10 +460,6 @@
                 <source>admin_activity.title</source>
                 <target>Atividades</target>
             </trans-unit>
-            <trans-unit id="admin_activity.subtitle">
-                <source>admin_activity.subtitle</source>
-                <target>Tarefas que podem ser escolhidas para registros de tempo</target>
-            </trans-unit>
             <trans-unit id="admin_activity.short_stats">
                 <source>admin_activity.short_stats</source>
                 <target>
@@ -502,10 +474,6 @@
             <trans-unit id="admin_customer.title">
                 <source>admin_customer.title</source>
                 <target>Cliente</target>
-            </trans-unit>
-            <trans-unit id="admin_customer.subtitle">
-                <source>admin_customer.subtitle</source>
-                <target>Seu cliente é a base para criar projetos e atividades</target>
             </trans-unit>
             <trans-unit id="label.number">
                 <source>label.number</source>
@@ -569,10 +537,6 @@
             <trans-unit id="admin_user.title">
                 <source>admin_user.title</source>
                 <target>Usuário</target>
-            </trans-unit>
-            <trans-unit id="admin_user.subtitle">
-                <source>admin_user.subtitle</source>
-                <target>Todos os usuários registrados da sua instalação do Kimai</target>
             </trans-unit>
             <trans-unit id="label.alias">
                 <source>label.alias</source>
@@ -728,10 +692,6 @@
                 <source>admin_invoice_template.title</source>
                 <target>Modelo de fatura</target>
             </trans-unit>
-            <trans-unit id="admin_invoice_template.subtitle">
-                <source>admin_invoice_template.subtitle</source>
-                <target>Administrar seus modelos de fatura que podem ser usados ​​para exportar dados.</target>
-            </trans-unit>
             <trans-unit id="invoice.title">
                 <source>invoice.title</source>
                 <target>Faturas</target>
@@ -739,10 +699,6 @@
             <trans-unit id="invoice.subtitle">
                 <source>invoice.subtitle</source>
                 <target>Criar faturas a partir de suas entradas de quadro de horários registradas.</target>
-            </trans-unit>
-            <trans-unit id="invoice.preview">
-                <source>invoice.preview</source>
-                <target>Esta é uma prévia dos dados que serão exibidos no documento da fatura.</target>
             </trans-unit>
             <trans-unit id="button.print">
                 <source>button.print</source>

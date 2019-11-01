@@ -28,11 +28,11 @@
             </trans-unit>
             <trans-unit id="profile-stats">
                 <source>profile-stats</source>
-                <target>Statistics</target>
+                <target>Profile</target>
             </trans-unit>
             <trans-unit id="settings">
                 <source>settings</source>
-                <target>Settings</target>
+                <target>Preferences</target>
             </trans-unit>
             <trans-unit id="timesheet">
                 <source>timesheet</source>
@@ -69,6 +69,10 @@
             <trans-unit id="create-timesheet">
                 <source>create-timesheet</source>
                 <target>Create timesheet</target>
+            </trans-unit>
+            <trans-unit id="permissions">
+                <source>permissions</source>
+                <target>Team permissions</target>
             </trans-unit>
         </body>
     </file>

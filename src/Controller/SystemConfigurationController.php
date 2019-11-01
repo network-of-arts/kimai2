@@ -169,7 +169,7 @@ class SystemConfigurationController extends AbstractController
         $types = $this->getConfigurationTypes();
 
         $event = new SystemConfigurationEvent($types);
-        $this->eventDispatcher->dispatch(SystemConfigurationEvent::CONFIGURE, $event);
+        $this->eventDispatcher->dispatch($event);
 
         foreach ($event->getConfigurations() as $configs) {
             foreach ($configs->getConfiguration() as $config) {
@@ -248,6 +248,10 @@ class SystemConfigurationController extends AbstractController
                         ->setName('defaults.user.theme')
                         ->setLabel('skin')
                         ->setType(SkinType::class),
+                    (new Configuration())
+                        ->setName('defaults.user.currency')
+                        ->setLabel('currency')
+                        ->setType(CurrencyType::class),
                 ]),
             (new SystemConfigurationModel())
                 ->setSection(SystemConfigurationModel::SECTION_THEME)
@@ -262,6 +266,19 @@ class SystemConfigurationController extends AbstractController
                         ->setLabel('theme.markdown_content')
                         ->setType(CheckboxType::class)
                         ->setTranslationDomain('system-configuration'),
+                    (new Configuration())
+                        ->setName('theme.autocomplete_chars')
+                        ->setLabel('theme.autocomplete_chars')
+                        ->setType(IntegerType::class)
+                        ->setTranslationDomain('system-configuration'),
+                    // FIXME should that be configurable per user?
+                    /*
+                    (new Configuration())
+                        ->setName('theme.auto_reload_datatable')
+                        ->setLabel('theme.auto_reload_datatable') // FIXME translation
+                        ->setType(CheckboxType::class)
+                        ->setTranslationDomain('system-configuration'),
+                    */
                 ]),
             (new SystemConfigurationModel())
                 ->setSection(SystemConfigurationModel::SECTION_CALENDAR)

@@ -10,7 +10,6 @@
 namespace App\Tests\Export\Renderer;
 
 use App\Configuration\ExportConfiguration;
-use App\Entity\User;
 use App\Export\Renderer\PDFRenderer;
 use App\Tests\Mocks\Security\UserDateTimeFactoryFactory;
 use App\Utils\HtmlToPdfConverter;

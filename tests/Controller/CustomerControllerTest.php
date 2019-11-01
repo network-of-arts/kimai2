@@ -9,13 +9,17 @@
 
 namespace App\Tests\Controller;
 
+use App\Entity\Customer;
+use App\Entity\CustomerMeta;
 use App\Entity\Project;
 use App\Entity\Timesheet;
 use App\Entity\User;
 use App\Tests\DataFixtures\CustomerFixtures;
+use App\Tests\DataFixtures\TeamFixtures;
 use App\Tests\DataFixtures\TimesheetFixtures;
 use App\Tests\Mocks\CustomerTestMetaFieldSubscriberMock;
 use Doctrine\ORM\EntityManager;
+use Symfony\Component\DomCrawler\Field\ChoiceFormField;
 
 /**
  * @group integration
@@ -25,14 +29,44 @@ class CustomerControllerTest extends ControllerBaseTest
     public function testIsSecure()
     {
         $this->assertUrlIsSecured('/admin/customer/');
-        $this->assertUrlIsSecuredForRole(User::ROLE_TEAMLEAD, '/admin/customer/');
+        $this->assertUrlIsSecuredForRole(User::ROLE_USER, '/admin/customer/');
     }
 
     public function testIndexAction()
     {
-        $client = $this->getClientForAuthenticatedUser(User::ROLE_ADMIN);
+        $client = $this->getClientForAuthenticatedUser(User::ROLE_TEAMLEAD);
         $this->assertAccessIsGranted($client, '/admin/customer/');
         $this->assertHasDataTable($client);
+    }
+
+    public function testIndexActionWithSearchTermQuery()
+    {
+        $client = $this->getClientForAuthenticatedUser(User::ROLE_ADMIN);
+        $em = $client->getContainer()->get('doctrine.orm.entity_manager');
+        $fixture = new CustomerFixtures();
+        $fixture->setAmount(5);
+        $fixture->setCallback(function (Customer $customer) {
+            $customer->setVisible(true);
+            $customer->setComment('I am a foobar with tralalalala some more content');
+            $customer->setMetaField((new CustomerMeta())->setName('location')->setValue('homeoffice'));
+            $customer->setMetaField((new CustomerMeta())->setName('feature')->setValue('timetracking'));
+        });
+        $this->importFixture($em, $fixture);
+
+        $client = $this->getClientForAuthenticatedUser(User::ROLE_ADMIN);
+        $this->assertAccessIsGranted($client, '/admin/customer/');
+
+        $form = $client->getCrawler()->filter('form.header-search')->form();
+        $client->submit($form, [
+            'searchTerm' => 'feature:timetracking foo',
+            'visibility' => 1,
+            'pageSize' => 50,
+            'page' => 1,
+        ]);
+
+        $this->assertTrue($client->getResponse()->isSuccessful());
+        $this->assertHasDataTable($client);
+        $this->assertDataTableRowCount($client, 'datatable_customer_admin', 5);
     }
 
     public function testBudgetAction()
@@ -109,6 +143,39 @@ class CustomerControllerTest extends ControllerBaseTest
         $this->request($client, '/admin/customer/1/edit');
         $editForm = $client->getCrawler()->filter('form[name=customer_edit_form]')->form();
         $this->assertEquals('Test Customer 2', $editForm->get('customer_edit_form[name]')->getValue());
+    }
+
+    public function testTeamPermissionAction()
+    {
+        $client = $this->getClientForAuthenticatedUser(User::ROLE_ADMIN);
+        $em = $client->getContainer()->get('doctrine.orm.entity_manager');
+
+        /** @var Customer $customer */
+        $customer = $em->getRepository(Customer::class)->find(1);
+        self::assertEquals(0, $customer->getTeams()->count());
+
+        $fixture = new TeamFixtures();
+        $fixture->setAmount(2);
+        $fixture->setAddCustomer(false);
+        $this->importFixture($em, $fixture);
+
+        $this->assertAccessIsGranted($client, '/admin/customer/1/permissions');
+        $form = $client->getCrawler()->filter('form[name=customer_team_permission_form]')->form();
+        /** @var ChoiceFormField $team1 */
+        $team1 = $form->get('customer_team_permission_form[teams][0]');
+        $team1->tick();
+        /** @var ChoiceFormField $team2 */
+        $team2 = $form->get('customer_team_permission_form[teams][1]');
+        $team2->tick();
+
+        $client->submit($form);
+        $this->assertIsRedirect($client, $this->createUrl('/admin/customer/'));
+        $client->followRedirect();
+        $this->assertHasDataTable($client);
+
+        /** @var Customer $customer */
+        $customer = $em->getRepository(Customer::class)->find(1);
+        self::assertEquals(2, $customer->getTeams()->count());
     }
 
     public function testDeleteAction()

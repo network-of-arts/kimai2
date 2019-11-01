@@ -10,7 +10,7 @@
 namespace App\Event;
 
 use App\Entity\Activity;
-use Symfony\Component\EventDispatcher\Event;
+use Symfony\Contracts\EventDispatcher\Event;
 
 /**
  * This event can be used, to dynamically add meta fields to activities
@@ -20,7 +20,7 @@ final class ActivityMetaDefinitionEvent extends Event
     /**
      * @var Activity
      */
-    protected $entity;
+    private $entity;
 
     public function __construct(Activity $entity)
     {

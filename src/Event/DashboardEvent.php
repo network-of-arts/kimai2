@@ -11,11 +11,14 @@ namespace App\Event;
 
 use App\Entity\User;
 use App\Widget\WidgetContainerInterface;
-use Symfony\Component\EventDispatcher\Event;
+use Symfony\Contracts\EventDispatcher\Event;
 
 final class DashboardEvent extends Event
 {
-    public const DASHBOARD = 'app.dashboard';
+    /**
+     * @deprecated since 1.4, will be removed with 2.0
+     */
+    public const DASHBOARD = DashboardEvent::class;
 
     /**
      * @var User

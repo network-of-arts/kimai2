@@ -10,9 +10,9 @@
 namespace App\Tests\Invoice\Renderer;
 
 use App\Entity\InvoiceDocument;
+use App\Invoice\InvoiceModel;
 use App\Invoice\Renderer\RendererTrait;
 use App\Invoice\RendererInterface;
-use App\Model\InvoiceModel;
 use Symfony\Component\HttpFoundation\Response;
 
 class DebugRenderer implements RendererInterface
@@ -76,6 +76,15 @@ class DebugRenderer implements RendererInterface
      * @return mixed
      */
     protected function getFormattedDuration($seconds)
+    {
+        return $seconds;
+    }
+
+    /**
+     * @param mixed $seconds
+     * @return mixed
+     */
+    protected function getFormattedDecimalDuration($seconds)
     {
         return $seconds;
     }

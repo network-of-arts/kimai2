@@ -10,7 +10,6 @@
 namespace App\Form\Toolbar;
 
 use App\Repository\Query\TimesheetQuery;
-use Symfony\Component\Form\Extension\Core\Type\ChoiceType;
 use Symfony\Component\Form\FormBuilderInterface;
 use Symfony\Component\OptionsResolver\OptionsResolver;
 
@@ -24,34 +23,20 @@ class TimesheetToolbarForm extends AbstractToolbarForm
      */
     public function buildForm(FormBuilderInterface $builder, array $options)
     {
-        $this->addTimesheetStateChoice($builder);
-        $this->addPageSizeChoice($builder);
+        $this->addSearchTermInputField($builder);
         if ($options['include_user']) {
-            $this->addUserChoice($builder);
+            $this->addUsersChoice($builder);
         }
         $this->addDateRangeChoice($builder);
         $this->addCustomerChoice($builder);
         $this->addProjectChoice($builder);
         $this->addActivityChoice($builder);
         $this->addTagInputField($builder);
+        $this->addTimesheetStateChoice($builder);
+        $this->addPageSizeChoice($builder);
         $this->addHiddenPagination($builder);
-    }
-
-    /**
-     * @param FormBuilderInterface $builder
-     */
-    protected function addTimesheetStateChoice(FormBuilderInterface $builder)
-    {
-        $builder->add('state', ChoiceType::class, [
-            'label' => 'label.entryState',
-            'required' => false,
-            'placeholder' => null,
-            'choices' => [
-                'entryState.all' => TimesheetQuery::STATE_ALL,
-                'entryState.running' => TimesheetQuery::STATE_RUNNING,
-                'entryState.stopped' => TimesheetQuery::STATE_STOPPED
-            ],
-        ]);
+        $this->addHiddenOrder($builder);
+        $this->addHiddenOrderBy($builder, TimesheetQuery::TIMESHEET_ORDER_ALLOWED);
     }
 
     /**

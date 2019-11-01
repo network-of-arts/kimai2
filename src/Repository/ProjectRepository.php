@@ -12,6 +12,7 @@ namespace App\Repository;
 use App\Entity\Activity;
 use App\Entity\Project;
 use App\Entity\Timesheet;
+use App\Entity\User;
 use App\Model\ProjectStatistic;
 use App\Repository\Loader\ProjectLoader;
 use App\Repository\Paginator\LoaderPaginator;
@@ -24,11 +25,28 @@ use Doctrine\ORM\Query;
 use Doctrine\ORM\QueryBuilder;
 use Pagerfanta\Pagerfanta;
 
-/**
- * Class ProjectRepository
- */
 class ProjectRepository extends EntityRepository
 {
+    /**
+     * @param mixed $id
+     * @param null $lockMode
+     * @param null $lockVersion
+     * @return Project|null
+     */
+    public function find($id, $lockMode = null, $lockVersion = null)
+    {
+        /** @var Project|null $project */
+        $project = parent::find($id, $lockMode, $lockVersion);
+        if (null === $project) {
+            return null;
+        }
+
+        $loader = new ProjectLoader($this->getEntityManager());
+        $loader->loadResults([$project]);
+
+        return $project;
+    }
+
     /**
      * @param Project $project
      * @throws ORMException
@@ -56,7 +74,7 @@ class ProjectRepository extends EntityRepository
 
     public function getProjectStatistics(Project $project): ProjectStatistic
     {
-        $stats = new ProjectStatistic();
+        $stats = new ProjectStatistic($project);
 
         $qb = $this->getEntityManager()->createQueryBuilder();
 
@@ -91,8 +109,49 @@ class ProjectRepository extends EntityRepository
         return $stats;
     }
 
+    private function addPermissionCriteria(QueryBuilder $qb, ?User $user = null, array $teams = [])
+    {
+        // make sure that all queries without a user see all projects
+        if (null === $user && empty($teams)) {
+            return;
+        }
+
+        // make sure that admins see all projects
+        if (null !== $user && ($user->isSuperAdmin() || $user->isAdmin())) {
+            return;
+        }
+
+        if (null !== $user) {
+            $teams = array_merge($teams, $user->getTeams()->toArray());
+        }
+
+        $qb->leftJoin('p.teams', 'teams')
+            ->leftJoin('c.teams', 'c_teams');
+
+        if (empty($teams)) {
+            $qb->andWhere($qb->expr()->isNull('c_teams'));
+            $qb->andWhere($qb->expr()->isNull('teams'));
+
+            return;
+        }
+
+        $orProject = $qb->expr()->orX(
+            $qb->expr()->isNull('teams'),
+            $qb->expr()->isMemberOf(':teams', 'p.teams')
+        );
+        $qb->andWhere($orProject);
+
+        $orCustomer = $qb->expr()->orX(
+            $qb->expr()->isNull('c_teams'),
+            $qb->expr()->isMemberOf(':teams', 'c.teams')
+        );
+        $qb->andWhere($orCustomer);
+
+        $qb->setParameter('teams', $teams);
+    }
+
     /**
-     * @deprecated since 1.1
+     * @deprecated since 1.1 - don't use this method, it ignores team permission checks
      */
     public function builderForEntityType($project, $customer)
     {
@@ -114,7 +173,7 @@ class ProjectRepository extends EntityRepository
         $qb = $this->getEntityManager()->createQueryBuilder();
 
         $qb
-            ->select('p', 'c')
+            ->select('p')
             ->from(Project::class, 'p')
             ->leftJoin('p.customer', 'c')
             ->addOrderBy('c.name', 'ASC')
@@ -140,6 +199,8 @@ class ProjectRepository extends EntityRepository
             $qb->setParameter('ignored', $query->getProjectToIgnore());
         }
 
+        $this->addPermissionCriteria($qb, $query->getUser(), $query->getTeams());
+
         return $qb;
     }
 
@@ -150,11 +211,23 @@ class ProjectRepository extends EntityRepository
         $qb
             ->select('p')
             ->from(Project::class, 'p')
+            ->leftJoin('p.customer', 'c')
         ;
+
+        $orderBy = $query->getOrderBy();
+        switch ($orderBy) {
+            case 'customer':
+                $orderBy = 'c.name';
+                break;
+            default:
+                $orderBy = 'p.' . $orderBy;
+                break;
+        }
+
+        $qb->addOrderBy($orderBy, $query->getOrder());
 
         if (in_array($query->getVisibility(), [ProjectQuery::SHOW_VISIBLE, ProjectQuery::SHOW_HIDDEN])) {
             $qb
-                ->leftJoin('p.customer', 'c')
                 ->andWhere($qb->expr()->eq('p.visible', ':visible'))
                 ->andWhere($qb->expr()->eq('c.visible', ':customer_visible'))
             ;
@@ -173,7 +246,39 @@ class ProjectRepository extends EntityRepository
                 ->setParameter('customer', $query->getCustomer());
         }
 
-        $qb->orderBy('p.' . $query->getOrderBy(), $query->getOrder());
+        $this->addPermissionCriteria($qb, $query->getCurrentUser());
+
+        if ($query->hasSearchTerm()) {
+            $searchAnd = $qb->expr()->andX();
+            $searchTerm = $query->getSearchTerm();
+
+            foreach ($searchTerm->getSearchFields() as $metaName => $metaValue) {
+                $qb->leftJoin('p.meta', 'meta');
+                $searchAnd->add(
+                    $qb->expr()->andX(
+                        $qb->expr()->eq('meta.name', ':metaName'),
+                        $qb->expr()->like('meta.value', ':metaValue')
+                    )
+                );
+                $qb->setParameter('metaName', $metaName);
+                $qb->setParameter('metaValue', '%' . $metaValue . '%');
+            }
+
+            if ($searchTerm->hasSearchTerm()) {
+                $searchAnd->add(
+                    $qb->expr()->orX(
+                        $qb->expr()->like('p.name', ':searchTerm'),
+                        $qb->expr()->like('p.comment', ':searchTerm'),
+                        $qb->expr()->like('p.orderNumber', ':searchTerm')
+                    )
+                );
+                $qb->setParameter('searchTerm', '%' . $searchTerm->getSearchTerm() . '%');
+            }
+
+            if ($searchAnd->count() > 0) {
+                $qb->andWhere($searchAnd);
+            }
+        }
 
         return $qb;
     }

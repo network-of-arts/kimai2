@@ -9,9 +9,12 @@
 
 namespace App\Controller;
 
+use App\Configuration\FormConfiguration;
 use App\Entity\Activity;
+use App\Entity\MetaTableTypeInterface;
 use App\Entity\Project;
 use App\Event\ActivityMetaDefinitionEvent;
+use App\Event\ActivityMetaDisplayEvent;
 use App\Form\ActivityEditForm;
 use App\Form\Toolbar\ActivityToolbarForm;
 use App\Form\Type\ActivityType;
@@ -41,13 +44,18 @@ class ActivityController extends AbstractController
      */
     private $repository;
     /**
+     * @var FormConfiguration
+     */
+    private $configuration;
+    /**
      * @var EventDispatcherInterface
      */
     protected $dispatcher;
 
-    public function __construct(ActivityRepository $repository, EventDispatcherInterface $dispatcher)
+    public function __construct(ActivityRepository $repository, FormConfiguration $configuration, EventDispatcherInterface $dispatcher)
     {
         $this->repository = $repository;
+        $this->configuration = $configuration;
         $this->dispatcher = $dispatcher;
     }
 
@@ -68,11 +76,16 @@ class ActivityController extends AbstractController
     public function indexAction($page, Request $request)
     {
         $query = new ActivityQuery();
+        $query->setCurrentUser($this->getUser());
         $query->setPage($page);
 
         $form = $this->getToolbarForm($query);
         $form->setData($query);
         $form->submit($request->query->all(), false);
+
+        if (!$form->isValid()) {
+            $query->resetByFormError($form->getErrors());
+        }
 
         /* @var $entries Pagerfanta */
         $entries = $this->getRepository()->getPagerfantaForQuery($query);
@@ -80,9 +93,21 @@ class ActivityController extends AbstractController
         return $this->render('activity/index.html.twig', [
             'entries' => $entries,
             'query' => $query,
-            'showFilter' => $query->isDirty(),
             'toolbarForm' => $form->createView(),
+            'metaColumns' => $this->findMetaColumns($query),
         ]);
+    }
+
+    /**
+     * @param ActivityQuery $query
+     * @return MetaTableTypeInterface[]
+     */
+    protected function findMetaColumns(ActivityQuery $query): array
+    {
+        $event = new ActivityMetaDisplayEvent($query, ActivityMetaDisplayEvent::ACTIVITY);
+        $this->dispatcher->dispatch($event);
+
+        return $event->getFields();
     }
 
     /**
@@ -113,9 +138,13 @@ class ActivityController extends AbstractController
      */
     public function budgetAction(Activity $activity)
     {
+        $stats = $this->getRepository()->getActivityStatistics($activity);
+
+        // TODO sent event with stats
+
         return $this->render('activity/budget.html.twig', [
             'activity' => $activity,
-            'stats' => $this->getRepository()->getActivityStatistics($activity)
+            'stats' => $stats,
         ]);
     }
 
@@ -197,7 +226,7 @@ class ActivityController extends AbstractController
     protected function renderActivityForm(Activity $activity, Request $request)
     {
         $event = new ActivityMetaDefinitionEvent($activity);
-        $this->dispatcher->dispatch(ActivityMetaDefinitionEvent::class, $event);
+        $this->dispatcher->dispatch($event);
 
         $editForm = $this->createEditForm($activity);
         $editForm->handleRequest($request);
@@ -250,15 +279,20 @@ class ActivityController extends AbstractController
      */
     private function createEditForm(Activity $activity)
     {
-        if ($activity->getId() === null) {
-            $url = $this->generateUrl('admin_activity_create');
-        } else {
+        $currency = $this->configuration->getCustomerDefaultCurrency();
+        $url = $this->generateUrl('admin_activity_create');
+
+        if ($activity->getId() !== null) {
             $url = $this->generateUrl('admin_activity_edit', ['id' => $activity->getId()]);
+            if (null !== $activity->getProject()) {
+                $currency = $activity->getProject()->getCustomer()->getCurrency();
+            }
         }
 
         return $this->createForm(ActivityEditForm::class, $activity, [
             'action' => $url,
             'method' => 'POST',
+            'currency' => $currency,
             'create_more' => true,
             'customer' => true,
             'include_budget' => $this->isGranted('budget', $activity)

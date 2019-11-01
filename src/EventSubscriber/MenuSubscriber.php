@@ -84,7 +84,7 @@ final class MenuSubscriber implements EventSubscriberInterface
             );
         }
 
-        if ($auth->isGranted('view_export')) {
+        if ($auth->isGranted('create_export')) {
             $menu->addItem(
                 new MenuItemModel('export', 'menu.export', 'export', [], $this->getIcon('export'))
             );
@@ -142,6 +142,12 @@ final class MenuSubscriber implements EventSubscriberInterface
             );
         }
 
+        if ($auth->isGranted('view_team')) {
+            $menu->addChild(
+                new MenuItemModel('user_team', 'menu.admin_team', 'admin_team', [], $this->getIcon('team'))
+            );
+        }
+
         if ($auth->isGranted('plugins')) {
             $menu->addChild(
                 new MenuItemModel('plugins', 'menu.plugin', 'plugins', [], $this->getIcon('plugin'))
@@ -151,6 +157,12 @@ final class MenuSubscriber implements EventSubscriberInterface
         if ($auth->isGranted('system_configuration')) {
             $menu->addChild(
                 new MenuItemModel('system_configuration', 'menu.system_configuration', 'system_configuration', [], $this->getIcon('configuration'))
+            );
+        }
+
+        if ($auth->isGranted('system_information')) {
+            $menu->addChild(
+                new MenuItemModel('doctor', 'menu.doctor', 'doctor', [], $this->getIcon('doctor'))
             );
         }
     }
