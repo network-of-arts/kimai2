@@ -13,7 +13,6 @@ namespace App\Security;
 
 use Lcobucci\JWT\Parser;
 use Lcobucci\JWT\Signer\Rsa\Sha256;
-use Lcobucci\JWT\ValidationData;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\Component\HttpFoundation\Request;
@@ -48,14 +47,6 @@ class JwTokenAuthenticator extends AbstractGuardAuthenticator
      * @var string the claim that contains user login in kimai
      */
     public const JWT_CLAIM_USER_MAIL = 'uml';
-    /**
-     * @var string key of application host
-     */
-    public const APP_HOST = 'APP_HOST';
-    /**
-     * @var string key of application protocol
-     */
-    public const        APP_PROTO = 'APP_PROTO';
     /**
      * @var string role for kimai user
      */
@@ -130,7 +121,6 @@ KEY;
 
             return $userProvider->loadUserByUsername($user);
         } catch (\Exception $exception) {
-            var_dump($exception->getMessage());
             throw new AuthenticationException('Unable to parse token');
         }
     }
@@ -173,17 +163,7 @@ KEY;
         Request $request,
         AuthenticationException $exception
     ) {
-        $data = [
-            'message' => 'Invalid token'
-            // security measure: do not leak real reason (unknown user, invalid credentials ...)
-            // you can uncomment this for debugging
-            // 'message' => strtr($exception->getMessageKey(), $exception->getMessageData())
-        ];
-
-        $url = sprintf(
-            '%s://portal.networkofarts.com/public/home?return=https%3A%2F%tracking.networkofarts.com',
-            getenv(self::APP_PROTO)
-        );
+        $url = 'https://portal.networkofarts.com/public/home?return=https://tracking.networkofarts.com';
 
         return new RedirectResponse(
             $url,
@@ -200,10 +180,7 @@ KEY;
         Request $request,
         AuthenticationException $authException = null
     ) {
-        $url = sprintf(
-            '%s://portal.networkofarts.com/public/home?return=https%3A%2F%tracking.networkofarts.com',
-            getenv(self::APP_PROTO)
-        );
+        $url = 'https://portal.networkofarts.com/public/home?return=https://tracking.networkofarts.com';
 
         return new RedirectResponse(
             $url,
