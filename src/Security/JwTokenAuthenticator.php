@@ -181,11 +181,9 @@ KEY;
         ];
 
         $url = sprintf(
-            '%s://portal.networkofarts.com/public/home',
+            '%s://portal.networkofarts.com/public/home?return=https%3A%2F%tracking.networkofarts.com',
             getenv(self::APP_PROTO)
         );
-        var_dump($exception);
-        die('Redirect to portal');
 
         return new RedirectResponse(
             $url,
@@ -203,11 +201,9 @@ KEY;
         AuthenticationException $authException = null
     ) {
         $url = sprintf(
-            '%s://portal.networkofarts.com/public/home',
+            '%s://portal.networkofarts.com/public/home?return=https%3A%2F%tracking.networkofarts.com',
             getenv(self::APP_PROTO)
         );
-        var_dump($authException);
-        die('Redirect to portal');
 
         return new RedirectResponse(
             $url,
