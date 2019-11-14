@@ -14,6 +14,7 @@ namespace App\Security;
 use Lcobucci\JWT\Parser;
 use Lcobucci\JWT\Signer\Rsa\Sha256;
 use Lcobucci\JWT\ValidationData;
+use Psr\Log\LoggerInterface;
 use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -30,6 +31,7 @@ use Symfony\Component\Security\Guard\AbstractGuardAuthenticator;
  */
 class JwTokenAuthenticator extends AbstractGuardAuthenticator
 {
+
     /**
      * @var string the default cookie name containing the jwt token
      */
@@ -38,6 +40,10 @@ class JwTokenAuthenticator extends AbstractGuardAuthenticator
      * @var string the claim that contains the roles
      */
     public const CLAIM_ROLES = 'rls';
+    /**
+     * @var string the claim that contains the extensions
+     */
+    public const JWT_CLAIM_EXTENSIONS = 'ext';
     /**
      * @var string the claim that contains user login in kimai
      */
@@ -53,21 +59,35 @@ class JwTokenAuthenticator extends AbstractGuardAuthenticator
     /**
      * @var string role for kimai user
      */
-    public const        ROLE_APP_KIMAI = 'ROLE_APP_KIMAI';
+    public const        ROLE_APP_KIMAI = 'ROLE_EMPLOYEE';
     /**
      * @var string public key for decoding
      */
     public const JWT_PUBLIC_KEY = <<<KEY
 -----BEGIN PUBLIC KEY-----
-MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAnzyis1ZjfNB0bBgKFMSv
-vkTtwlvBsaJq7S5wA+kzeVOVpVWwkWdVha4s38XM/pa/yr47av7+z3VTmvDRyAHc
-aT92whREFpLv9cj5lTeJSibyr/Mrm/YtjCZVWgaOYIhwrXwKLqPr/11inWsAkfIy
-tvHWTxZYEcXLgAXFuUuaS3uF9gEiNQwzGTU1v0FqkqTBr4B8nW3HCN47XUu0t8Y0
-e+lf4s4OxQawWD79J9/5d3Ry0vbV3Am1FtGJiJvOwRsIfVChDpYStTcHTCMqtvWb
-V6L11BWkpzGXSW4Hv43qa+GSYOD2QU68Mb59oSk2OB+BtOLpJofmbGEGgvmwyCI9
-MwIDAQAB
+MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAuGoMv8P6xVNliDnqNvBf
+gSHsoB7KMqx01RImoEzRwglXVjTTKM2PNdhb+KLOag5LrWsaNk4yVBb7aHQEzcTK
+gYGMNpEEigKLqO+Eb8zGuQExYv+kKh84I3o8SuVFVsyz98MHpJ4u7xDeNphkysoe
+tk8VCrLQ9vcARXd9LvKbpWwqwv/3USPxEYtmeYPh/lhB0OpOvgs/dfWD4Gahmkrn
+QURYnIfaHTXN/YkH21mNbPjWiEkS/lfJDkIuVlQ/+xlleKYklU/1L5AKxECOWQyN
+jHfz1JQxOxJ5zS3uxRwOSF9s7WQsPhKWK9m3IvHmfm98fyp8O+UTewZMeE65unpC
+CwIDAQAB
 -----END PUBLIC KEY-----
 KEY;
+    /**
+     * @var \Psr\Log\LoggerInterface
+     */
+    private $logger;
+
+    /**
+     * JwTokenAuthenticator constructor.
+     *
+     * @param \Psr\Log\LoggerInterface $logger
+     */
+    public function __construct(LoggerInterface $logger)
+    {
+        $this->logger = $logger;
+    }
 
     /**
      * @param Request $request
@@ -75,15 +95,8 @@ KEY;
      */
     public function supports(Request $request)
     {
-        if (strpos($request->getRequestUri(), '/api/doc') === 0) {
-            return false;
-        }
-
-        if (strpos($request->getRequestUri(), '/api/') === 0) {
-            return false;
-        }
-
-        return $request->cookies->has(self::JWT_COOKIE_NAME);
+        // we support every request - no other auth method is allowed
+        return true;
     }
 
     /**
@@ -98,32 +111,32 @@ KEY;
     }
 
     /**
-     * @param array $credentials
+     * @param array                 $credentials
      * @param UserProviderInterface $userProvider
      * @return null|UserInterface
      */
     public function getUser($credentials, UserProviderInterface $userProvider)
     {
-        $jwtToken = (new Parser())->parse($credentials['token']);
-        if (!$jwtToken->verify(new Sha256(), self::JWT_PUBLIC_KEY)) {
-            throw new AuthenticationException('Invalid token signature');
+        try {
+            $jwtToken = (new Parser())->parse($credentials['token']);
+            if (!$jwtToken->verify(new Sha256(), self::JWT_PUBLIC_KEY)) {
+                $this->logger->error('JWT has invalid signature');
+                throw new AuthenticationException('Invalid token signature');
+            }
+
+            $ext = $jwtToken->getClaim(self::JWT_CLAIM_EXTENSIONS);
+            $key = self::JWT_CLAIM_USER_MAIL;
+            $user = $ext->$key;
+
+            return $userProvider->loadUserByUsername($user);
+        } catch (\Exception $exception) {
+            var_dump($exception->getMessage());
+            throw new AuthenticationException('Unable to parse token');
         }
-
-        $data = new ValidationData();
-        $data->setIssuer($_ENV[self::APP_HOST]);
-        $data->has(self::JWT_CLAIM_USER_MAIL);
-
-        if (!$jwtToken->validate($data)) {
-            throw new AuthenticationException('Invalid token');
-        }
-
-        $user = $jwtToken->getClaim(self::JWT_CLAIM_USER_MAIL);
-
-        return $userProvider->loadUserByUsername($user);
     }
 
     /**
-     * @param array $credentials
+     * @param array         $credentials
      * @param UserInterface $user
      * @return bool
      */
@@ -132,15 +145,15 @@ KEY;
         $jwtToken = (new Parser())->parse($credentials['token']);
 
         return in_array(
-            self::ROLE_APP_KIMAI,
+            strtolower(self::ROLE_APP_KIMAI),
             $jwtToken->getClaim(self::CLAIM_ROLES)
         );
     }
 
     /**
-     * @param Request $request
+     * @param Request        $request
      * @param TokenInterface $token
-     * @param string $providerKey
+     * @param string         $providerKey
      * @return null|Response
      */
     public function onAuthenticationSuccess(
@@ -152,7 +165,7 @@ KEY;
     }
 
     /**
-     * @param Request $request
+     * @param Request                 $request
      * @param AuthenticationException $exception
      * @return RedirectResponse
      */
@@ -168,10 +181,11 @@ KEY;
         ];
 
         $url = sprintf(
-            '%s://portal.%s.com/public/home',
-            $_ENV[self::APP_PROTO],
-            $_ENV[self::APP_HOST]
+            '%s://portal.networkofarts.com/public/home',
+            getenv(self::APP_PROTO)
         );
+        var_dump($exception);
+        die('Redirect to portal');
 
         return new RedirectResponse(
             $url,
@@ -180,7 +194,7 @@ KEY;
     }
 
     /**
-     * @param Request $request
+     * @param Request                      $request
      * @param AuthenticationException|null $authException
      * @return RedirectResponse|Response
      */
@@ -189,10 +203,11 @@ KEY;
         AuthenticationException $authException = null
     ) {
         $url = sprintf(
-            '%s://portal.%s.com/public/home',
-            $_ENV[self::APP_PROTO],
-            $_ENV[self::APP_HOST]
+            '%s://portal.networkofarts.com/public/home',
+            getenv(self::APP_PROTO)
         );
+        var_dump($authException);
+        die('Redirect to portal');
 
         return new RedirectResponse(
             $url,

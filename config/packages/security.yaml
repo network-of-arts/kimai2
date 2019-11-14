@@ -24,7 +24,7 @@ security:
 
             guard:
                 authenticators:
-                    - App\Security\TokenAuthenticator
+                    - App\Security\JwTokenAuthenticator
 
             remember_me:
                 secret:   '%kernel.secret%'
