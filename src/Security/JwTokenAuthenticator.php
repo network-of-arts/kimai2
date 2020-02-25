@@ -166,7 +166,7 @@ KEY;
 
         return new RedirectResponse(
             $url,
-            301
+            302
         );
     }
 
@@ -183,7 +183,7 @@ KEY;
 
         return new RedirectResponse(
             $url,
-            301
+            302
         );
     }
 
