@@ -16,12 +16,6 @@ matrix:
           - composer kimai:phpstan
           - composer kimai:code-lint
     - stage: Test
-      php: '7.2'
-      env: CODECOVERAGE=0 DB=mysql
-      sudo: required
-      services:
-        - mysql
-    - stage: Test
       php: '7.3'
       env: CODECOVERAGE=0 DB=mysql
       sudo: required
@@ -33,42 +27,6 @@ matrix:
       sudo: required
       services:
         - mysql
-    - stage: Test
-      php: '7.2'
-      env: CODECOVERAGE=0 DB=sqlite
-    - stage: Test
-      php: '7.3'
-      env: CODECOVERAGE=0 DB=sqlite
-    - stage: Test
-      php: '7.4'
-      env: CODECOVERAGE=0 DB=sqlite
-    - stage: Test
-      php: '7.2'
-      env: CODECOVERAGE=0 DB=mariadb
-      addons:
-        mariadb: '10.2'
-      services:
-        - mysql
-      before_script:
-        - mysql -u root -e 'CREATE USER IF NOT EXISTS travis@localhost; GRANT ALL ON *.* TO travis@localhost;'
-    - stage: Test
-      php: '7.3'
-      env: CODECOVERAGE=0 DB=mariadb
-      addons:
-        mariadb: '10.2'
-      services:
-        - mysql
-      before_script:
-        - mysql -u root -e 'CREATE USER IF NOT EXISTS travis@localhost; GRANT ALL ON *.* TO travis@localhost;'
-    - stage: Test
-      php: '7.4'
-      env: CODECOVERAGE=0 DB=mariadb
-      addons:
-        mariadb: '10.2'
-      services: 
-        - mysql
-      before_script:
-        - mysql -u root -e 'CREATE USER IF NOT EXISTS travis@localhost; GRANT ALL ON *.* TO travis@localhost;'
     - stage: Code coverage
       php: '7.3'
       env: CODECOVERAGE=1 DB=sqlite
@@ -92,4 +50,3 @@ script:
   - bin/console doctrine:database:create -n
   - bin/console doctrine:migrations:migrate -n
   - bin/console doctrine:migrations:migrate first -n
-

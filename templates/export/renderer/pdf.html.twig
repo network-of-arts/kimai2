@@ -1,9 +1,9 @@
 {% set showUserColumn = true %}
-{% set showRateColumn = true %}
+<!-- always hide the rate column
+{% set showRateColumn = false %}
 {% if query.user %}
     {# this is only triggered, if a user exports from his personal timesheet screen#}
     {% set showUserColumn = false %}
-    {% set showRateColumn = is_granted('view_rate_own_timesheet') %}
     {# TODO if exporting via the admin screen, users without view_rate_own_timesheet might still see their own rates, maybe merge view_rate_own_timesheet and view_rate_other_timesheet into a new view_rate permission? #}
 {% endif %}
 <html>
@@ -85,7 +85,7 @@ mpdf-->
     <tr>
         <td>{{ 'label.customer'|trans }}</td>
         <td>{{ 'label.project'|trans }}</td>
-        <td>{{ 'label.duration'|trans }}</td>
+        <td width="20%">{{ 'label.duration'|trans }}</td>
         {% if showRateColumn %}
         <td>{{ 'label.rate'|trans }}</td>
         {% endif %}
@@ -214,6 +214,36 @@ mpdf-->
         </tbody>
     </table>
 
+    <h3>{{ 'export.summary_activity'|trans }}</h3>
+    <table class="items" width="100%" style="font-size: 9pt; border-collapse: collapse; " cellpadding="8">
+        <thead>
+        <tr>
+            <td width="80%">{{ 'label.activity'|trans }}</td>
+            <td>{{ 'label.duration'|trans }}</td>
+        </tr>
+        </thead>
+        {% set totalDuration = 0 %}
+        {% for activity, summary in activity_summary %}}
+            <tbody>
+            <tr>
+                <td>
+                    <b>{{ summary.display_text }}</b>
+                </td>
+                <td style="text-align: center">
+                    {{ summary.duration|duration }}
+                </td>
+            </tr>
+            </tbody>
+            {% set totalDuration = totalDuration + summary.duration %}
+        {% endfor %}
+        <tbody>
+        <tr class="summary">
+            <td></td>
+            <td class="totals duration">{{ totalDuration|duration }}</td>
+        </tr>
+        </tbody>
+    </table>
+
     <pagebreak>
 
         <h3>{{ 'export.full_list'|trans }}</h3>
@@ -228,8 +258,8 @@ mpdf-->
         {% if showUserColumn %}
         <td>{{ 'label.user'|trans }}</td>
         {% endif %}
-        <td width="">{{ 'label.description'|trans }}</td>
-        <td>{{ 'label.duration'|trans }}</td>
+        <td>{{ 'label.description'|trans }}</td>
+        <td width="20%">{{ 'label.duration'|trans }}</td>
         {% if showRateColumn %}
         <td>{{ 'label.rate'|trans }}</td>
         {% endif %}

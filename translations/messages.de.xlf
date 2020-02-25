@@ -984,7 +984,10 @@
                 <source>export.user_summary_by_project</source>
                 <target>Aufstellung nach Benutzer und Projekt</target>
             </trans-unit>
-
+            <trans-unit id="export.summary_activity">
+                <source>export.summary_activity</source>
+                <target>Aufstellung nach Aktivität</target>
+            </trans-unit>
             <!--
               Month names
             -->

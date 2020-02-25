@@ -30,7 +30,6 @@ use Symfony\Component\Security\Guard\AbstractGuardAuthenticator;
  */
 class JwTokenAuthenticator extends AbstractGuardAuthenticator
 {
-
     /**
      * @var string the default cookie name containing the jwt token
      */

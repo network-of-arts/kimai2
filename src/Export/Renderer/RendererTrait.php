@@ -108,4 +108,33 @@ trait RendererTrait
 
         return $summary;
     }
+
+    /**
+     * @param \App\Entity\Timesheet[] $timesheets
+     * @return array
+     */
+    protected function calculateActivitySummary(array $timesheets)
+    {
+        $summary = [];
+
+        foreach ($timesheets as $timesheet) {
+            /** @var int the id to group by, in this case the activity $id */
+            $id = $timesheet->getActivity()
+                            ->getId();
+
+            if (!isset($summary[$id])) {
+                $summary[$id] = [
+                    'display_text' => $timesheet->getActivity()
+                                                ->getName(),
+                    'duration'     => 0,
+                ];
+            }
+
+            $summary[$id]['duration'] += $timesheet->getDuration();
+        }
+
+        asort($summary);
+
+        return $summary;
+    }
 }

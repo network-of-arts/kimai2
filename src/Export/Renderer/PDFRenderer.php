@@ -74,6 +74,7 @@ final class PDFRenderer extends BasePDFRenderer implements RendererInterface
             'now' => $this->dateTime->createDateTime(),
             'summaries' => $this->calculateSummary($timesheets),
             'user_summary' => $this->calculateUserSummary($timesheets),
+            'activity_summary' => $this->calculateActivitySummary($timesheets),
             'display_cost' => $this->exportConfiguration->doDisplayCostOnPdf(),
         ]);
 
