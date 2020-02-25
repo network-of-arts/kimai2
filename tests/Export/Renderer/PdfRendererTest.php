@@ -18,8 +18,9 @@ use Symfony\Component\HttpFoundation\Request;
 use Twig\Environment;
 
 /**
+ * @covers \App\Export\Base\PDFRenderer
+ * @covers \App\Export\Base\RendererTrait
  * @covers \App\Export\Renderer\PDFRenderer
- * @covers \App\Export\Renderer\RendererTrait
  * @group integration
  */
 class PdfRendererTest extends AbstractRendererTest
@@ -32,7 +33,7 @@ class PdfRendererTest extends AbstractRendererTest
     public function testConfiguration()
     {
         $sut = new PDFRenderer(
-            $this->getMockBuilder(Environment::class)->disableOriginalConstructor()->getMock(),
+            $this->createMock(Environment::class),
             $this->getDateTimeFactory(),
             $this->getMockBuilder(HtmlToPdfConverter::class)
                  ->getMock(),

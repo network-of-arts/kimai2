@@ -68,6 +68,27 @@ class TimesheetRepository extends EntityRepository
     }
 
     /**
+     * @param Timesheet[] $timesheets
+     * @throws \Exception
+     */
+    public function deleteMultiple(iterable $timesheets): void
+    {
+        $em = $this->getEntityManager();
+        $em->beginTransaction();
+
+        try {
+            foreach ($timesheets as $timesheet) {
+                $em->remove($timesheet);
+            }
+            $em->flush();
+            $em->commit();
+        } catch (\Exception $ex) {
+            $em->rollback();
+            throw $ex;
+        }
+    }
+
+    /**
      * @param Timesheet $timesheet
      * @throws \Doctrine\ORM\ORMException
      * @throws \Doctrine\ORM\OptimisticLockException
@@ -77,6 +98,27 @@ class TimesheetRepository extends EntityRepository
         $entityManager = $this->getEntityManager();
         $entityManager->persist($timesheet);
         $entityManager->flush();
+    }
+
+    /**
+     * @param Timesheet[] $timesheets
+     * @throws \Exception
+     */
+    public function saveMultiple(array $timesheets): void
+    {
+        $em = $this->getEntityManager();
+        $em->beginTransaction();
+
+        try {
+            foreach ($timesheets as $timesheet) {
+                $em->persist($timesheet);
+            }
+            $em->flush();
+            $em->commit();
+        } catch (\Exception $ex) {
+            $em->rollback();
+            throw $ex;
+        }
     }
 
     /**
@@ -176,14 +218,14 @@ class TimesheetRepository extends EntityRepository
 
         if (!empty($begin)) {
             $qb
-                ->andWhere($qb->expr()->gt('t.begin', ':from'))
-                ->setParameter('from', $begin, Type::DATETIME);
+                ->andWhere($qb->expr()->gte($this->getDatetimeFieldSql('t.begin'), ':from'))
+                ->setParameter('from', $begin);
         }
 
         if (!empty($end)) {
             $qb
-                ->andWhere($qb->expr()->lt('t.end', ':to'))
-                ->setParameter('to', $end, Type::DATETIME);
+                ->andWhere($qb->expr()->lte($this->getDatetimeFieldSql('t.end'), ':to'))
+                ->setParameter('to', $end);
         }
 
         if (null !== $user) {
@@ -243,15 +285,15 @@ class TimesheetRepository extends EntityRepository
         ;
 
         if (!empty($begin)) {
-            $qb->where($qb->expr()->gt('t.begin', ':from'));
-            $qb->setParameter('from', $begin, Type::DATETIME);
+            $qb->andWhere($qb->expr()->gte($this->getDatetimeFieldSql('t.begin'), ':from'))
+                ->setParameter('from', $begin);
         } else {
-            $qb->where($qb->expr()->isNotNull('t.begin'));
+            $qb->andWhere($qb->expr()->isNotNull('t.begin'));
         }
 
         if (!empty($end)) {
-            $qb->andWhere($qb->expr()->lt('t.end', ':to'))
-                ->setParameter('to', $end, Type::DATETIME);
+            $qb->andWhere($qb->expr()->lte($this->getDatetimeFieldSql('t.end'), ':to'))
+                ->setParameter('to', $end);
         } else {
             $qb->andWhere($qb->expr()->isNotNull('t.end'));
         }
@@ -598,6 +640,10 @@ class TimesheetRepository extends EntityRepository
             $currentUser = $query->getCurrentUser();
 
             if (!$currentUser->isSuperAdmin() && !$currentUser->isAdmin()) {
+                // make sure that the user himself is in the list of users, if he is part of a team
+                // if teams are used and the user is not a teamlead, the list of users would be empty and then leading to NOT limit the select by user IDs
+                $user[] = $currentUser;
+
                 foreach ($currentUser->getTeams() as $team) {
                     if ($currentUser->isTeamleadOf($team)) {
                         $query->addTeam($team);
@@ -628,7 +674,7 @@ class TimesheetRepository extends EntityRepository
         }
 
         if (null !== $query->getBegin()) {
-            $qb->andWhere('t.begin >= :begin')
+            $qb->andWhere($qb->expr()->gte($this->getDatetimeFieldSql('t.begin'), ':begin'))
                 ->setParameter('begin', $query->getBegin());
         }
 
@@ -639,7 +685,7 @@ class TimesheetRepository extends EntityRepository
         }
 
         if (null !== $query->getEnd()) {
-            $qb->andWhere('t.begin <= :end')
+            $qb->andWhere($qb->expr()->lte($this->getDatetimeFieldSql('t.begin'), ':end'))
                 ->setParameter('end', $query->getEnd());
         }
 
@@ -736,7 +782,7 @@ class TimesheetRepository extends EntityRepository
         }
 
         if (null !== $startFrom) {
-            $qb->andWhere($qb->expr()->gt('t.begin', ':begin'))
+            $qb->andWhere($qb->expr()->gte($this->getDatetimeFieldSql('t.begin'), ':begin'))
                 ->setParameter('begin', $startFrom);
         }
 
@@ -777,5 +823,15 @@ class TimesheetRepository extends EntityRepository
             ->execute();
 
         $em->commit();
+    }
+
+    private function getDatetimeFieldSql(string $field): string
+    {
+        // this would change the selected data for queries that join across multiple timezones
+        // but due to tax laws, this is disabled - exports/invoices should *always* include the data from
+        // the own timezone, not from the original users timezone
+        // return sprintf('CONVERT_TZ(%s, \'UTC\', t.timezone)', $field);
+
+        return $field;
     }
 }

@@ -18,6 +18,7 @@ use App\Entity\User;
 use App\Invoice\Calculator\ActivityInvoiceCalculator;
 use App\Invoice\InvoiceModel;
 use App\Repository\Query\InvoiceQuery;
+use App\Tests\Invoice\DebugFormatter;
 
 /**
  * @covers \App\Invoice\Calculator\ActivityInvoiceCalculator
@@ -32,22 +33,49 @@ class ActivityInvoiceCalculatorTest extends AbstractCalculatorTest
         $this->assertEmptyModel(new ActivityInvoiceCalculator());
     }
 
+    public function testExceptionNoActivity()
+    {
+        $this->expectException('Exception');
+        $this->expectExceptionMessage('Cannot work with invoice items that do not have an activity');
+        $timesheet = new Timesheet();
+
+        $sut = new ActivityInvoiceCalculator();
+        $model = $this->getEmptyModel();
+        $model->addEntries([$timesheet]);
+        $sut->setModel($model);
+        $sut->getEntries();
+    }
+
+    public function testExceptionNoId()
+    {
+        $this->expectException('Exception');
+        $this->expectExceptionMessage('Cannot handle un-persisted activities');
+        $timesheet = new Timesheet();
+        $timesheet->setActivity(new Activity());
+
+        $sut = new ActivityInvoiceCalculator();
+        $model = $this->getEmptyModel();
+        $model->addEntries([$timesheet]);
+        $sut->setModel($model);
+        $sut->getEntries();
+    }
+
     public function testWithMultipleEntries()
     {
         $customer = new Customer();
         $template = new InvoiceTemplate();
         $template->setVat(19);
 
-        $user = $this->getMockBuilder(User::class)->setMethods(['getId'])->disableOriginalConstructor()->getMock();
+        $user = $this->getMockBuilder(User::class)->onlyMethods(['getId'])->disableOriginalConstructor()->getMock();
         $user->method('getId')->willReturn(1);
 
-        $activity1 = $this->getMockBuilder(Activity::class)->setMethods(['getId'])->disableOriginalConstructor()->getMock();
+        $activity1 = $this->getMockBuilder(Activity::class)->onlyMethods(['getId'])->disableOriginalConstructor()->getMock();
         $activity1->method('getId')->willReturn(1);
 
-        $activity2 = $this->getMockBuilder(Activity::class)->setMethods(['getId'])->disableOriginalConstructor()->getMock();
+        $activity2 = $this->getMockBuilder(Activity::class)->onlyMethods(['getId'])->disableOriginalConstructor()->getMock();
         $activity2->method('getId')->willReturn(2);
 
-        $activity3 = $this->getMockBuilder(Activity::class)->setMethods(['getId'])->disableOriginalConstructor()->getMock();
+        $activity3 = $this->getMockBuilder(Activity::class)->onlyMethods(['getId'])->disableOriginalConstructor()->getMock();
         $activity3->method('getId')->willReturn(3);
 
         $timesheet = new Timesheet();
@@ -105,7 +133,7 @@ class ActivityInvoiceCalculatorTest extends AbstractCalculatorTest
         $query = new InvoiceQuery();
         $query->setActivity($activity1);
 
-        $model = new InvoiceModel();
+        $model = new InvoiceModel(new DebugFormatter());
         $model->setCustomer($customer);
         $model->setTemplate($template);
         $model->setEntries($entries);

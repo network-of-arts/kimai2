@@ -18,6 +18,7 @@ use App\Entity\User;
 use App\Invoice\Calculator\ProjectInvoiceCalculator;
 use App\Invoice\InvoiceModel;
 use App\Repository\Query\InvoiceQuery;
+use App\Tests\Invoice\DebugFormatter;
 use DateTime;
 
 /**
@@ -39,16 +40,16 @@ class ProjectInvoiceCalculatorTest extends AbstractCalculatorTest
         $template = new InvoiceTemplate();
         $template->setVat(19);
 
-        $user = $this->getMockBuilder(User::class)->setMethods(['getId'])->disableOriginalConstructor()->getMock();
+        $user = $this->getMockBuilder(User::class)->onlyMethods(['getId'])->disableOriginalConstructor()->getMock();
         $user->method('getId')->willReturn(1);
 
-        $project1 = $this->getMockBuilder(Project::class)->setMethods(['getId'])->disableOriginalConstructor()->getMock();
+        $project1 = $this->getMockBuilder(Project::class)->onlyMethods(['getId'])->disableOriginalConstructor()->getMock();
         $project1->method('getId')->willReturn(1);
 
-        $project2 = $this->getMockBuilder(Project::class)->setMethods(['getId'])->disableOriginalConstructor()->getMock();
+        $project2 = $this->getMockBuilder(Project::class)->onlyMethods(['getId'])->disableOriginalConstructor()->getMock();
         $project2->method('getId')->willReturn(2);
 
-        $project3 = $this->getMockBuilder(Project::class)->setMethods(['getId'])->disableOriginalConstructor()->getMock();
+        $project3 = $this->getMockBuilder(Project::class)->onlyMethods(['getId'])->disableOriginalConstructor()->getMock();
         $project3->method('getId')->willReturn(3);
 
         $timesheet = new Timesheet();
@@ -106,7 +107,7 @@ class ProjectInvoiceCalculatorTest extends AbstractCalculatorTest
         $query = new InvoiceQuery();
         $query->setProject($project1);
 
-        $model = new InvoiceModel();
+        $model = new InvoiceModel(new DebugFormatter());
         $model->setCustomer($customer);
         $model->setTemplate($template);
         $model->setEntries($entries);

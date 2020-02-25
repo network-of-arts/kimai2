@@ -9,10 +9,15 @@
 
 namespace App\Export\Renderer;
 
-use App\Entity\Timesheet;
+use App\Export\Base\RendererTrait as BaseRendererTrait;
 
+/**
+ * @deprecated since 1.6, will be removed with 2.0
+ */
 trait RendererTrait
 {
+    use BaseRendererTrait;
+
     /**
      * @param Timesheet[] $timesheets
      * @return array

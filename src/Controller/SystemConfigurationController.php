@@ -14,10 +14,11 @@ use App\Event\SystemConfigurationEvent;
 use App\Form\Model\Configuration;
 use App\Form\Model\SystemConfiguration as SystemConfigurationModel;
 use App\Form\SystemConfigurationForm;
-use App\Form\Type\EnhancedSelectboxType;
 use App\Form\Type\LanguageType;
+use App\Form\Type\RoundingModeType;
 use App\Form\Type\SkinType;
 use App\Form\Type\TrackingModeType;
+use App\Form\Type\WeekDaysType;
 use App\Repository\ConfigurationRepository;
 use Sensio\Bundle\FrameworkExtraBundle\Configuration\Security;
 use Symfony\Component\EventDispatcher\EventDispatcherInterface;
@@ -32,6 +33,7 @@ use Symfony\Component\Routing\Annotation\Route;
 use Symfony\Component\Validator\Constraints\DateTime;
 use Symfony\Component\Validator\Constraints\GreaterThanOrEqual;
 use Symfony\Component\Validator\Constraints\NotNull;
+use Symfony\Component\Validator\Constraints\Regex;
 
 /**
  * Controller used for executing system relevant tasks.
@@ -216,6 +218,39 @@ class SystemConfigurationController extends AbstractController
                         ]),
                 ]),
             (new SystemConfigurationModel())
+                ->setSection(SystemConfigurationModel::SECTION_ROUNDING)
+                ->setConfiguration([
+                    (new Configuration())
+                        ->setName('timesheet.rounding.default.mode')
+                        ->setType(RoundingModeType::class)
+                        ->setTranslationDomain('system-configuration'),
+                    (new Configuration())
+                        ->setName('timesheet.rounding.default.begin')
+                        ->setType(IntegerType::class)
+                        ->setTranslationDomain('system-configuration')
+                        ->setConstraints([
+                            new GreaterThanOrEqual(['value' => 0])
+                        ]),
+                    (new Configuration())
+                        ->setName('timesheet.rounding.default.end')
+                        ->setType(IntegerType::class)
+                        ->setTranslationDomain('system-configuration')
+                        ->setConstraints([
+                            new GreaterThanOrEqual(['value' => 0])
+                        ]),
+                    (new Configuration())
+                        ->setName('timesheet.rounding.default.duration')
+                        ->setType(IntegerType::class)
+                        ->setTranslationDomain('system-configuration')
+                        ->setConstraints([
+                            new GreaterThanOrEqual(['value' => 0])
+                        ]),
+                    (new Configuration())
+                        ->setName('timesheet.rounding.default.days')
+                        ->setType(WeekDaysType::class)
+                        ->setTranslationDomain('system-configuration'),
+                ]),
+            (new SystemConfigurationModel())
                 ->setSection(SystemConfigurationModel::SECTION_FORM_CUSTOMER)
                 ->setConfiguration([
                     (new Configuration())
@@ -257,25 +292,20 @@ class SystemConfigurationController extends AbstractController
                 ->setSection(SystemConfigurationModel::SECTION_THEME)
                 ->setConfiguration([
                     (new Configuration())
-                        ->setName('theme.select_type')
-                        ->setTranslationDomain('system-configuration')
-                        ->setType(EnhancedSelectboxType::class)
-                        ->setRequired(false),
+                        ->setName('theme.autocomplete_chars')
+                        ->setLabel('theme.autocomplete_chars')
+                        ->setType(IntegerType::class)
+                        ->setTranslationDomain('system-configuration'),
                     (new Configuration())
                         ->setName('timesheet.markdown_content')
                         ->setLabel('theme.markdown_content')
                         ->setType(CheckboxType::class)
                         ->setTranslationDomain('system-configuration'),
-                    (new Configuration())
-                        ->setName('theme.autocomplete_chars')
-                        ->setLabel('theme.autocomplete_chars')
-                        ->setType(IntegerType::class)
-                        ->setTranslationDomain('system-configuration'),
-                    // FIXME should that be configurable per user?
+                    // TODO should that be configurable per user?
                     /*
                     (new Configuration())
                         ->setName('theme.auto_reload_datatable')
-                        ->setLabel('theme.auto_reload_datatable') // FIXME translation
+                        ->setLabel('theme.auto_reload_datatable') // TODO translation
                         ->setType(CheckboxType::class)
                         ->setTranslationDomain('system-configuration'),
                     */
@@ -311,6 +341,11 @@ class SystemConfigurationController extends AbstractController
                         ->setTranslationDomain('system-configuration')
                         ->setType(TextType::class)
                         ->setConstraints([new DateTime(['format' => 'H:i']), new NotNull()]),
+                    (new Configuration())
+                        ->setName('calendar.slot_duration')
+                        ->setTranslationDomain('system-configuration')
+                        ->setType(TextType::class)
+                        ->setConstraints([new Regex(['pattern' => '/[0-2]{1}[0-9]{1}:[0-9]{2}:[0-9]{2}/']), new NotNull()]),
                 ]),
             (new SystemConfigurationModel())
                 ->setSection(SystemConfigurationModel::SECTION_BRANDING)

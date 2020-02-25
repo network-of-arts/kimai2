@@ -15,8 +15,9 @@ use Symfony\Component\HttpFoundation\Request;
 use Twig\Environment;
 
 /**
+ * @covers \App\Export\Base\HtmlRenderer
+ * @covers \App\Export\Base\RendererTrait
  * @covers \App\Export\Renderer\HtmlRenderer
- * @covers \App\Export\Renderer\RendererTrait
  * @group integration
  */
 class HtmlRendererTest extends AbstractRendererTest
@@ -24,7 +25,7 @@ class HtmlRendererTest extends AbstractRendererTest
     public function testConfiguration()
     {
         $sut = new HtmlRenderer(
-            $this->getMockBuilder(Environment::class)->disableOriginalConstructor()->getMock(),
+            $this->createMock(Environment::class),
             new EventDispatcher()
         );
 
@@ -58,8 +59,8 @@ class HtmlRendererTest extends AbstractRendererTest
 
         $this->assertStringContainsString('<td>Customer Name</td>', $content);
         $this->assertStringContainsString('<td>project name</td>', $content);
-        $this->assertStringContainsString('<td class="duration">01:50 h</td>', $content);
-        $this->assertStringContainsString('<td class="cost">€2,437.12</td>', $content);
+        $this->assertStringContainsString('<td class="duration summary-duration">01:50 h</td>', $content);
+        $this->assertStringContainsString('<td class="cost summary-rate">€2,437.12</td>', $content);
 
         // 5 times in the "full list" and once in the "summary with activities"
         $this->assertEquals(6, substr_count($content, 'activity description'));

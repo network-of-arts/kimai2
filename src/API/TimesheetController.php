@@ -19,6 +19,8 @@ use App\Form\API\TimesheetApiEditForm;
 use App\Repository\Query\TimesheetQuery;
 use App\Repository\TagRepository;
 use App\Repository\TimesheetRepository;
+use App\Timesheet\RoundingService;
+use App\Timesheet\TimesheetService;
 use App\Timesheet\TrackingMode\TrackingModeInterface;
 use App\Timesheet\TrackingModeService;
 use App\Timesheet\UserDateTimeFactory;
@@ -29,6 +31,7 @@ use FOS\RestBundle\Controller\Annotations\RouteResource;
 use FOS\RestBundle\Request\ParamFetcherInterface;
 use FOS\RestBundle\View\View;
 use FOS\RestBundle\View\ViewHandlerInterface;
+use Nelmio\ApiDocBundle\Annotation\Security as ApiSecurity;
 use Pagerfanta\Pagerfanta;
 use Sensio\Bundle\FrameworkExtraBundle\Configuration\Security;
 use Swagger\Annotations as SWG;
@@ -75,6 +78,14 @@ class TimesheetController extends BaseApiController
      * @var EventDispatcherInterface
      */
     private $dispatcher;
+    /**
+     * @var RoundingService
+     */
+    private $roundingService;
+    /**
+     * @var TimesheetService
+     */
+    private $service;
 
     public function __construct(
         ViewHandlerInterface $viewHandler,
@@ -83,7 +94,9 @@ class TimesheetController extends BaseApiController
         TimesheetConfiguration $configuration,
         TagRepository $tagRepository,
         TrackingModeService $trackingModeService,
-        EventDispatcherInterface $dispatcher
+        EventDispatcherInterface $dispatcher,
+        RoundingService $roundingService,
+        TimesheetService $service
     ) {
         $this->viewHandler = $viewHandler;
         $this->repository = $repository;
@@ -92,6 +105,8 @@ class TimesheetController extends BaseApiController
         $this->tagRepository = $tagRepository;
         $this->trackingModeService = $trackingModeService;
         $this->dispatcher = $dispatcher;
+        $this->roundingService = $roundingService;
+        $this->service = $service;
     }
 
     protected function getTrackingMode(): TrackingModeInterface
@@ -117,7 +132,7 @@ class TimesheetController extends BaseApiController
      * @Rest\QueryParam(name="activity", requirements="\d+", strict=true, nullable=true, description="Activity ID to filter timesheets")
      * @Rest\QueryParam(name="page", requirements="\d+", strict=true, nullable=true, description="The page to display, renders a 404 if not found (default: 1)")
      * @Rest\QueryParam(name="size", requirements="\d+", strict=true, nullable=true, description="The amount of entries for each page (default: 50)")
-     * @Rest\QueryParam(name="tags", requirements="[a-zA-Z0-9 \-,]+", strict=true, nullable=true, description="The name of tags which are in the datasets")
+     * @Rest\QueryParam(name="tags", strict=true, nullable=true, description="The name of tags which are in the datasets")
      * @Rest\QueryParam(name="orderBy", requirements="id|begin|end|rate", strict=true, nullable=true, description="The field by which results will be ordered. Allowed values: id, begin, end, rate (default: begin)")
      * @Rest\QueryParam(name="order", requirements="ASC|DESC", strict=true, nullable=true, description="The result order. Allowed values: ASC, DESC (default: DESC)")
      * @Rest\QueryParam(name="begin", requirements=@Constraints\DateTime(format="Y-m-d\TH:i:s"), strict=true, nullable=true, description="Only records after this date will be included (format: HTML5)")
@@ -129,11 +144,10 @@ class TimesheetController extends BaseApiController
      *
      * @Security("is_granted('view_own_timesheet') or is_granted('view_other_timesheet')")
      *
-     * @param ParamFetcherInterface $paramFetcher
-     * @return Response
-     * @throws \Exception
+     * @ApiSecurity(name="apiUser")
+     * @ApiSecurity(name="apiToken")
      */
-    public function cgetAction(ParamFetcherInterface $paramFetcher)
+    public function cgetAction(ParamFetcherInterface $paramFetcher): Response
     {
         $query = new TimesheetQuery();
         $query->setUser($this->getUser());
@@ -242,10 +256,10 @@ class TimesheetController extends BaseApiController
      *
      * @Security("is_granted('view_own_timesheet') or is_granted('view_other_timesheet')")
      *
-     * @param int $id
-     * @return Response
+     * @ApiSecurity(name="apiUser")
+     * @ApiSecurity(name="apiToken")
      */
-    public function getAction($id)
+    public function getAction(int $id): Response
     {
         $data = $this->repository->find($id);
 
@@ -283,45 +297,36 @@ class TimesheetController extends BaseApiController
      *
      * @Security("is_granted('create_own_timesheet')")
      *
-     * @param Request $request
-     * @return Response
-     * @throws \App\Repository\RepositoryException
-     * @throws \Doctrine\ORM\ORMException
-     * @throws \Doctrine\ORM\OptimisticLockException
+     * @ApiSecurity(name="apiUser")
+     * @ApiSecurity(name="apiToken")
      */
-    public function postAction(Request $request)
+    public function postAction(Request $request): Response
     {
-        $timesheet = new Timesheet();
-        $timesheet->setUser($this->getUser());
-        $timesheet->setBegin($this->dateTime->createDateTime());
-
-        $event = new TimesheetMetaDefinitionEvent($timesheet);
-        $this->dispatcher->dispatch($event);
+        $timesheet = $this->service->createNewTimesheet($this->getUser(), $request);
 
         $mode = $this->getTrackingMode();
 
         $form = $this->createForm(TimesheetApiEditForm::class, $timesheet, [
             'include_rate' => $this->isGranted('edit_rate', $timesheet),
             'include_exported' => $this->isGranted('edit_export', $timesheet),
+            'include_user' => $this->isGranted('create_other_timesheet'),
             'allow_begin_datetime' => $mode->canUpdateTimesWithAPI(),
             'allow_end_datetime' => $mode->canUpdateTimesWithAPI(),
             'date_format' => self::DATE_FORMAT,
         ]);
 
-        $form->submit($request->request->all());
+        $form->submit($request->request->all(), false);
 
         if ($form->isValid()) {
-            if (null === $timesheet->getEnd()) {
-                if (!$this->isGranted('start', $timesheet)) {
-                    throw new AccessDeniedHttpException('You are not allowed to start this timesheet record');
+            try {
+                $this->service->saveNewTimesheet($timesheet);
+            } catch (\Exception $ex) {
+                if ($ex->getMessage() === 'timesheet.start.exceeded_limit') {
+                    throw new BadRequestHttpException('Too many active timesheets');
+                } else {
+                    throw $ex;
                 }
-                $this->repository->stopActiveEntries(
-                    $timesheet->getUser(),
-                    $this->configuration->getActiveEntriesHardLimit()
-                );
             }
-
-            $this->repository->save($timesheet);
 
             $view = new View($timesheet, 200);
             $view->getContext()->setGroups(['Default', 'Entity', 'Timesheet']);
@@ -360,11 +365,10 @@ class TimesheetController extends BaseApiController
      *      required=true,
      * )
      *
-     * @param Request $request
-     * @param int $id the timesheet to update
-     * @return Response
+     * @ApiSecurity(name="apiUser")
+     * @ApiSecurity(name="apiToken")
      */
-    public function patchAction(Request $request, int $id)
+    public function patchAction(Request $request, int $id): Response
     {
         $timesheet = $this->repository->find($id);
 
@@ -384,6 +388,7 @@ class TimesheetController extends BaseApiController
         $form = $this->createForm(TimesheetApiEditForm::class, $timesheet, [
             'include_rate' => $this->isGranted('edit_rate', $timesheet),
             'include_exported' => $this->isGranted('edit_export', $timesheet),
+            'include_user' => $this->isGranted('edit', $timesheet),
             'allow_begin_datetime' => $mode->canUpdateTimesWithAPI(),
             'allow_end_datetime' => $mode->canUpdateTimesWithAPI(),
             'date_format' => self::DATE_FORMAT,
@@ -424,10 +429,10 @@ class TimesheetController extends BaseApiController
      *      required=true,
      * )
      *
-     * @param int $id
-     * @return Response
+     * @ApiSecurity(name="apiUser")
+     * @ApiSecurity(name="apiToken")
      */
-    public function deleteAction($id)
+    public function deleteAction(int $id): Response
     {
         $timesheet = $this->repository->find($id);
 
@@ -463,10 +468,11 @@ class TimesheetController extends BaseApiController
      * @Rest\QueryParam(name="size", requirements="\d+", strict=true, nullable=true, description="The amount of entries (default: 10)")
      *
      * @Security("is_granted('view_own_timesheet') or is_granted('view_other_timesheet')")
-     * @return Response
-     * @throws \Doctrine\ORM\Query\QueryException
+     *
+     * @ApiSecurity(name="apiUser")
+     * @ApiSecurity(name="apiToken")
      */
-    public function recentAction(ParamFetcherInterface $paramFetcher)
+    public function recentAction(ParamFetcherInterface $paramFetcher): Response
     {
         $user = $this->getUser();
         $begin = $this->dateTime->createDateTime('-1 year');
@@ -508,9 +514,11 @@ class TimesheetController extends BaseApiController
      * )
      *
      * @Security("is_granted('view_own_timesheet')")
-     * @return Response
+     *
+     * @ApiSecurity(name="apiUser")
+     * @ApiSecurity(name="apiToken")
      */
-    public function activeAction()
+    public function activeAction(): Response
     {
         $data = $this->repository->getActiveEntries($this->getUser());
 
@@ -536,13 +544,10 @@ class TimesheetController extends BaseApiController
      *      required=true,
      * )
      *
-     * @param int $id
-     * @return Response
-     * @throws \App\Repository\RepositoryException
-     * @throws \Doctrine\ORM\ORMException
-     * @throws \Doctrine\ORM\OptimisticLockException
+     * @ApiSecurity(name="apiUser")
+     * @ApiSecurity(name="apiToken")
      */
-    public function stopAction($id)
+    public function stopAction(int $id): Response
     {
         $timesheet = $this->repository->find($id);
 
@@ -554,7 +559,7 @@ class TimesheetController extends BaseApiController
             throw new AccessDeniedHttpException('You are not allowed to stop this timesheet');
         }
 
-        $this->repository->stopRecording($timesheet);
+        $this->service->stopTimesheet($timesheet);
 
         $view = new View($timesheet, 200);
         $view->getContext()->setGroups(['Default', 'Entity', 'Timesheet']);
@@ -580,13 +585,10 @@ class TimesheetController extends BaseApiController
      *
      * @Rest\RequestParam(name="copy", requirements="all|tags|rates|meta|description", strict=true, nullable=true, description="Whether data should be copied to the new entry. Allowed values: all, tags, rates, description, meta (default: nothing is copied)")
      *
-     * @param int $id
-     * @return Response
-     * @throws \App\Repository\RepositoryException
-     * @throws \Doctrine\ORM\ORMException
-     * @throws \Doctrine\ORM\OptimisticLockException
+     * @ApiSecurity(name="apiUser")
+     * @ApiSecurity(name="apiToken")
      */
-    public function restartAction($id, ParamFetcherInterface $paramFetcher, ValidatorInterface $validator)
+    public function restartAction(int $id, ParamFetcherInterface $paramFetcher, ValidatorInterface $validator): Response
     {
         $timesheet = $this->repository->find($id);
 
@@ -598,16 +600,14 @@ class TimesheetController extends BaseApiController
             throw new AccessDeniedHttpException('You are not allowed to re-start this timesheet');
         }
 
-        /** @var User $user */
-        $user = $this->getUser();
+        $copyTimesheet = $this->service->createNewTimesheet($this->getUser());
 
-        $copyTimesheet = new Timesheet();
         $copyTimesheet
             ->setBegin($this->dateTime->createDateTime())
-            ->setUser($user)
             ->setActivity($timesheet->getActivity())
             ->setProject($timesheet->getProject())
         ;
+        $this->roundingService->roundBegin($copyTimesheet);
 
         if (null !== ($copy = $paramFetcher->get('copy'))) {
             if (in_array($copy, ['rates', 'all'])) {
@@ -639,12 +639,7 @@ class TimesheetController extends BaseApiController
             throw new BadRequestHttpException($errors[0]->getPropertyPath() . ' = ' . $errors[0]->getMessage());
         }
 
-        $this->repository->stopActiveEntries(
-            $user,
-            $this->configuration->getActiveEntriesHardLimit()
-        );
-
-        $this->repository->save($copyTimesheet);
+        $this->service->saveNewTimesheet($copyTimesheet);
 
         $view = new View($copyTimesheet, 200);
         $view->getContext()->setGroups(['Default', 'Entity', 'Timesheet']);
@@ -668,12 +663,10 @@ class TimesheetController extends BaseApiController
      *      required=true,
      * )
      *
-     * @param int $id
-     * @return Response
-     * @throws \Doctrine\ORM\ORMException
-     * @throws \Doctrine\ORM\OptimisticLockException
+     * @ApiSecurity(name="apiUser")
+     * @ApiSecurity(name="apiToken")
      */
-    public function exportAction($id)
+    public function exportAction(int $id): Response
     {
         $timesheet = $this->repository->find($id);
 
@@ -715,13 +708,10 @@ class TimesheetController extends BaseApiController
      * @Rest\RequestParam(name="name", strict=true, nullable=false, description="The meta-field name")
      * @Rest\RequestParam(name="value", strict=true, nullable=false, description="The meta-field value")
      *
-     * @param int $id
-     * @param ParamFetcherInterface $paramFetcher
-     * @return Response
-     * @throws \Doctrine\ORM\ORMException
-     * @throws \Doctrine\ORM\OptimisticLockException
+     * @ApiSecurity(name="apiUser")
+     * @ApiSecurity(name="apiToken")
      */
-    public function metaAction($id, ParamFetcherInterface $paramFetcher)
+    public function metaAction(int $id, ParamFetcherInterface $paramFetcher): Response
     {
         $timesheet = $this->repository->find($id);
 

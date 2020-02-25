@@ -21,7 +21,10 @@ use App\Entity\ProjectMeta;
 use App\Entity\Timesheet;
 use App\Entity\TimesheetMeta;
 use App\Entity\User;
+use App\Entity\UserPreference;
 use App\Invoice\Calculator\DefaultCalculator;
+use App\Invoice\DefaultInvoiceFormatter;
+use App\Invoice\InvoiceFormatter;
 use App\Invoice\InvoiceModel;
 use App\Invoice\NumberGenerator\DateNumberGenerator;
 use App\Invoice\Renderer\AbstractRenderer;
@@ -47,10 +50,16 @@ trait RendererTestTrait
      * @param string $filename
      * @return InvoiceDocument
      */
-    protected function getInvoiceDocument(string $filename)
+    protected function getInvoiceDocument(string $filename, bool $testOnly = false)
     {
+        if (!$testOnly) {
+            return new InvoiceDocument(
+                new \SplFileInfo($this->getInvoiceTemplatePath() . $filename)
+            );
+        }
+
         return new InvoiceDocument(
-            new \SplFileInfo($this->getInvoiceTemplatePath() . $filename)
+            new \SplFileInfo(__DIR__ . '/../templates/' . $filename)
         );
     }
 
@@ -59,6 +68,11 @@ trait RendererTestTrait
      * @return AbstractRenderer
      */
     protected function getAbstractRenderer(string $classname)
+    {
+        return new $classname();
+    }
+
+    protected function getFormatter(): InvoiceFormatter
     {
         $requestStack = new RequestStack();
         $languages = [
@@ -79,17 +93,25 @@ trait RendererTestTrait
         $dateExtension = new DateExtensions($localeSettings);
         $extensions = new Extensions($localeSettings);
 
-        return new $classname($translator, $dateExtension, $extensions);
+        return new DefaultInvoiceFormatter($translator, $dateExtension, $extensions);
     }
 
     protected function getInvoiceModel(): InvoiceModel
     {
+        $user = new User();
+        $user->setUsername('one-user');
+        $user->setTitle('user title');
+        $user->setAlias('genious alias');
+        $user->setEmail('fantastic@four');
+        $user->addPreference((new UserPreference())->setName('kitty')->setValue('kat'));
+        $user->addPreference((new UserPreference())->setName('hello')->setValue('world'));
+
         $customer = new Customer();
         $customer->setCurrency('EUR');
         $customer->setMetaField((new CustomerMeta())->setName('foo-customer')->setValue('bar-customer')->setIsVisible(true));
 
         $template = new InvoiceTemplate();
-        $template->setTitle('a test invoice template title');
+        $template->setTitle('a very *long* test invoice / template title with [special] character');
         $template->setVat(19);
 
         $project = new Project();
@@ -103,12 +125,12 @@ trait RendererTestTrait
         $activity->setMetaField((new ActivityMeta())->setName('foo-activity')->setValue('bar-activity')->setIsVisible(true));
 
         $userMethods = ['getId', 'getPreferenceValue', 'getUsername'];
-        $user1 = $this->getMockBuilder(User::class)->setMethods($userMethods)->disableOriginalConstructor()->getMock();
+        $user1 = $this->getMockBuilder(User::class)->onlyMethods($userMethods)->disableOriginalConstructor()->getMock();
         $user1->method('getId')->willReturn(1);
         $user1->method('getPreferenceValue')->willReturn('50');
         $user1->method('getUsername')->willReturn('foo-bar');
 
-        $user2 = $this->getMockBuilder(User::class)->setMethods($userMethods)->disableOriginalConstructor()->getMock();
+        $user2 = $this->getMockBuilder(User::class)->onlyMethods($userMethods)->disableOriginalConstructor()->getMock();
         $user2->method('getId')->willReturn(2);
         $user2->method('getUsername')->willReturn('hello-world');
 
@@ -179,11 +201,12 @@ trait RendererTestTrait
         $query->setEnd(new \DateTime());
         $query->setProject($project);
 
-        $model = new InvoiceModel();
+        $model = new InvoiceModel($this->getFormatter());
         $model->setCustomer($customer);
         $model->setTemplate($template);
         $model->setEntries($entries);
         $model->setQuery($query);
+        $model->setUser($user);
 
         $calculator = new DefaultCalculator();
         $calculator->setModel($model);
@@ -200,6 +223,14 @@ trait RendererTestTrait
 
     protected function getInvoiceModelOneEntry(): InvoiceModel
     {
+        $user = new User();
+        $user->setUsername('one-user');
+        $user->setTitle('user title');
+        $user->setAlias('genious alias');
+        $user->setEmail('fantastic@four');
+        $user->addPreference((new UserPreference())->setName('kitty')->setValue('kat'));
+        $user->addPreference((new UserPreference())->setName('hello')->setValue('world'));
+
         $customer = new Customer();
         $customer->setCurrency('USD');
         $customer->setMetaField((new CustomerMeta())->setName('foo-customer')->setValue('bar-customer')->setIsVisible(true));
@@ -219,7 +250,7 @@ trait RendererTestTrait
         $activity->setMetaField((new ActivityMeta())->setName('foo-activity')->setValue('bar-activity')->setIsVisible(true));
 
         $userMethods = ['getId', 'getPreferenceValue', 'getUsername'];
-        $user1 = $this->getMockBuilder(User::class)->setMethods($userMethods)->disableOriginalConstructor()->getMock();
+        $user1 = $this->getMockBuilder(User::class)->onlyMethods($userMethods)->disableOriginalConstructor()->getMock();
         $user1->method('getId')->willReturn(1);
         $user1->method('getPreferenceValue')->willReturn('50');
         $user1->method('getUsername')->willReturn('foo-bar');
@@ -242,11 +273,12 @@ trait RendererTestTrait
         $query->setBegin(new \DateTime());
         $query->setEnd(new \DateTime());
 
-        $model = new InvoiceModel();
+        $model = new InvoiceModel($this->getFormatter());
         $model->setCustomer($customer);
         $model->setTemplate($template);
         $model->setEntries($entries);
         $model->setQuery($query);
+        $model->setUser($user);
 
         $calculator = new DefaultCalculator();
         $calculator->setModel($model);

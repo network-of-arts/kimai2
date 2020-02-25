@@ -28,10 +28,12 @@ class InvoiceToolbarForm extends AbstractToolbarForm
     {
         $this->addSearchTermInputField($builder);
         $this->addTemplateChoice($builder);
-        $this->addUsersChoice($builder);
+        if ($options['include_user']) {
+            $this->addUsersChoice($builder);
+        }
         $this->addDateRangeChoice($builder);
-        $this->addCustomerChoice($builder, true);
-        $this->addProjectChoice($builder);
+        $this->addCustomerChoice($builder, ['required' => true, 'start_date_param' => null, 'end_date_param' => null, 'ignore_date' => true, 'placeholder' => '']);
+        $this->addProjectChoice($builder, ['ignore_date' => true]);
         $this->addActivityChoice($builder);
         $this->addTagInputField($builder);
         $this->addExportStateChoice($builder);
@@ -41,7 +43,7 @@ class InvoiceToolbarForm extends AbstractToolbarForm
         ]);
         $builder->add('create', SubmitType::class, [
             'label' => 'button.print',
-            'attr' => ['formtarget' => 'invoice'],
+            'attr' => ['formtarget' => '_blank'],
         ]);
         $builder->add('preview', SubmitType::class, [
             'label' => 'button.preview',
@@ -64,6 +66,7 @@ class InvoiceToolbarForm extends AbstractToolbarForm
         $resolver->setDefaults([
             'data_class' => InvoiceQuery::class,
             'csrf_protection' => false,
+            'include_user' => true,
         ]);
     }
 }

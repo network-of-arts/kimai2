@@ -59,9 +59,24 @@ class InvoiceTemplate
     /**
      * @var string
      *
+     * @ORM\Column(name="vat_id", type="string", length=50, nullable=true)
+     * @Assert\Length(max=50)
+     */
+    private $vatId;
+
+    /**
+     * @var string
+     *
      * @ORM\Column(name="address", type="text", nullable=true)
      */
     private $address;
+
+    /**
+     * @var string
+     *
+     * @ORM\Column(name="contact", type="text", nullable=true)
+     */
+    private $contact;
 
     /**
      * @var int
@@ -84,6 +99,7 @@ class InvoiceTemplate
      *
      * @ORM\Column(name="calculator", type="string", length=20, nullable=false)
      * @Assert\NotBlank()
+     * @Assert\Length(max=20)
      */
     private $calculator = 'default';
     /**
@@ -91,6 +107,7 @@ class InvoiceTemplate
      *
      * @ORM\Column(name="number_generator", type="string", length=20, nullable=false)
      * @Assert\NotBlank()
+     * @Assert\Length(max=20)
      */
     private $numberGenerator = 'default';
 
@@ -99,6 +116,7 @@ class InvoiceTemplate
      *
      * @ORM\Column(name="renderer", type="string", length=20, nullable=false)
      * @Assert\NotBlank()
+     * @Assert\Length(max=20)
      */
     private $renderer = 'default';
 
@@ -108,6 +126,13 @@ class InvoiceTemplate
      * @ORM\Column(name="payment_terms", type="text", nullable=true)
      */
     private $paymentTerms;
+
+    /**
+     * @var string
+     *
+     * @ORM\Column(name="payment_details", type="text", nullable=true)
+     */
+    private $paymentDetails;
 
     public function getId(): ?int
     {
@@ -230,6 +255,42 @@ class InvoiceTemplate
     public function setPaymentTerms(?string $paymentTerms): InvoiceTemplate
     {
         $this->paymentTerms = $paymentTerms;
+
+        return $this;
+    }
+
+    public function getVatId(): ?string
+    {
+        return $this->vatId;
+    }
+
+    public function setVatId(?string $vatId): InvoiceTemplate
+    {
+        $this->vatId = $vatId;
+
+        return $this;
+    }
+
+    public function getContact(): ?string
+    {
+        return $this->contact;
+    }
+
+    public function setContact(?string $contact): InvoiceTemplate
+    {
+        $this->contact = $contact;
+
+        return $this;
+    }
+
+    public function getPaymentDetails(): ?string
+    {
+        return $this->paymentDetails;
+    }
+
+    public function setPaymentDetails(?string $paymentDetails): InvoiceTemplate
+    {
+        $this->paymentDetails = $paymentDetails;
 
         return $this;
     }

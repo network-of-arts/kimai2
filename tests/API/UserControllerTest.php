@@ -19,6 +19,8 @@ class UserControllerTest extends APIControllerBaseTest
     public function testIsSecure()
     {
         $this->assertUrlIsSecured('/api/users');
+        $this->assertUrlIsSecuredForRole(User::ROLE_USER, '/api/users');
+        $this->assertUrlIsSecuredForRole(User::ROLE_TEAMLEAD, '/api/users');
         $this->assertUrlIsSecuredForRole(User::ROLE_ADMIN, '/api/users');
     }
 
@@ -72,6 +74,22 @@ class UserControllerTest extends APIControllerBaseTest
 
         $this->assertIsArray($result);
         $this->assertStructure($result);
+        self::assertEquals('1', $result['id']);
+        self::assertEquals('CFO', $result['title']);
+        self::assertEquals('Clara Haynes', $result['alias']);
+    }
+
+    public function testGetMyProfile()
+    {
+        $client = $this->getClientForAuthenticatedUser(User::ROLE_SUPER_ADMIN);
+        $this->assertAccessIsGranted($client, '/api/users/me');
+        $result = json_decode($client->getResponse()->getContent(), true);
+
+        $this->assertIsArray($result);
+        $this->assertStructure($result);
+        self::assertEquals('6', $result['id']);
+        self::assertEquals('Super Administrator', $result['title']);
+        self::assertEquals('', $result['alias']);
     }
 
     public function testNotFound()
@@ -102,7 +120,7 @@ class UserControllerTest extends APIControllerBaseTest
         if ($full) {
             $expectedKeys = array_merge(
                 $expectedKeys,
-                ['title', 'avatar', 'roles', 'language', 'timezone']
+                ['title', 'avatar', 'teams', 'roles', 'language', 'timezone']
             );
         }
 

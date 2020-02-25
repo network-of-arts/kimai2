@@ -15,14 +15,14 @@ use App\Entity\Activity;
 use App\Entity\Customer;
 use App\Entity\Project;
 use App\Entity\Timesheet;
-use App\Tests\Mocks\Security\UserDateTimeFactoryFactory;
-use App\Timesheet\TrackingModeService;
+use App\Tests\Mocks\TrackingModeServiceFactory;
 use App\Validator\Constraints\Timesheet as TimesheetConstraint;
 use App\Validator\Constraints\TimesheetValidator;
 use Symfony\Component\Security\Core\Authorization\AuthorizationCheckerInterface;
 use Symfony\Component\Validator\Constraints\NotBlank;
 use Symfony\Component\Validator\Exception\UnexpectedTypeException;
 use Symfony\Component\Validator\Test\ConstraintValidatorTestCase;
+use Symfony\Component\Validator\Test\ConstraintViolationAssertion;
 
 /**
  * @covers \App\Validator\Constraints\TimesheetValidator
@@ -34,15 +34,18 @@ class TimesheetValidatorTest extends ConstraintValidatorTestCase
         $authMock = $this->getMockBuilder(AuthorizationCheckerInterface::class)->getMock();
         $authMock->method('isGranted')->willReturn($isGranted);
 
-        $loader = $this->getMockBuilder(ConfigLoaderInterface::class)->getMock();
+        $loader = $this->createMock(ConfigLoaderInterface::class);
         $config = new TimesheetConfiguration($loader, [
             'rules' => [
                 'allow_future_times' => false,
             ],
-            'mode' => 'default',
+            'rounding' => [
+                'default' => [
+                    'begin' => 1
+                ]
+            ]
         ]);
-        $dateTime = (new UserDateTimeFactoryFactory($this))->create();
-        $service = new TrackingModeService($dateTime, $config);
+        $service = (new TrackingModeServiceFactory($this))->create('default');
 
         return new TimesheetValidator($authMock, $config, $service);
     }
@@ -196,5 +199,69 @@ class TimesheetValidatorTest extends ConstraintValidatorTestCase
             ->atPath('property.path.customer')
             ->setCode(TimesheetConstraint::DISABLED_CUSTOMER_ERROR)
             ->assertRaised();
+    }
+
+    public function getProjectStartEndTestData()
+    {
+        yield [new \DateTime(), new \DateTime(), [
+            ['begin', TimesheetConstraint::PROJECT_NOT_STARTED, 'The project has not started at that time.'],
+            ['end', TimesheetConstraint::PROJECT_NOT_STARTED, 'The project has not started at that time.'],
+        ]];
+
+        yield [new \DateTime('-9 hour'), new \DateTime('-2 hour'), [
+            ['begin', TimesheetConstraint::PROJECT_NOT_STARTED, 'The project has not started at that time.'],
+            ['end', TimesheetConstraint::PROJECT_ALREADY_ENDED, 'The project is finished at that time.'],
+        ]];
+
+        yield [new \DateTime('-19 hour'), new \DateTime('-12 hour'), [
+            ['begin', TimesheetConstraint::PROJECT_ALREADY_ENDED, 'The project is finished at that time.'],
+            ['end', TimesheetConstraint::PROJECT_ALREADY_ENDED, 'The project is finished at that time.'],
+        ]];
+
+        yield [new \DateTime('-19 hour'), new \DateTime('-2 hour'), [
+            ['end', TimesheetConstraint::PROJECT_ALREADY_ENDED, 'The project is finished at that time.'],
+        ]];
+
+        yield [new \DateTime('-9 hour'), new \DateTime(), [
+            ['begin', TimesheetConstraint::PROJECT_NOT_STARTED, 'The project has not started at that time.'],
+        ]];
+    }
+
+    /**
+     * @dataProvider getProjectStartEndTestData
+     */
+    public function testEndBeforeWithProjectStartAndEnd(\DateTime $start, \DateTime $end, array $violations)
+    {
+        $timesheet = new Timesheet();
+        $timesheet->setBegin(new \DateTime('-10 hour'));
+        $timesheet->setEnd(new \DateTime('-1 hour'));
+
+        $customer = new Customer();
+        $project = new Project();
+        $project->setStart($start);
+        $project->setEnd($end);
+        $project->setCustomer($customer);
+
+        $timesheet->setProject($project);
+        $timesheet->setActivity(new Activity());
+
+        $this->validator->validate($timesheet, new TimesheetConstraint(['message' => 'myMessage']));
+
+        /** @var ConstraintViolationAssertion $assertion */
+        $assertion = null;
+        foreach ($violations as $violation) {
+            if (null === $assertion) {
+                $assertion = $this->buildViolation($violation[2])
+                    ->atPath('property.path.' . $violation[0])
+                    ->setCode($violation[1])
+                    ;
+            } else {
+                $assertion = $assertion->buildNextViolation($violation[2])
+                    ->atPath('property.path.' . $violation[0])
+                    ->setCode($violation[1])
+                ;
+            }
+        }
+        $assertion->assertRaised();
     }
 }

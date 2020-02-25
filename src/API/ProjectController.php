@@ -16,18 +16,21 @@ use App\Event\ProjectMetaDefinitionEvent;
 use App\Form\API\ProjectApiEditForm;
 use App\Repository\ProjectRepository;
 use App\Repository\Query\ProjectQuery;
+use App\Timesheet\UserDateTimeFactory;
 use App\Utils\SearchTerm;
 use FOS\RestBundle\Controller\Annotations as Rest;
 use FOS\RestBundle\Controller\Annotations\RouteResource;
 use FOS\RestBundle\Request\ParamFetcherInterface;
 use FOS\RestBundle\View\View;
 use FOS\RestBundle\View\ViewHandlerInterface;
+use Nelmio\ApiDocBundle\Annotation\Security as ApiSecurity;
 use Sensio\Bundle\FrameworkExtraBundle\Configuration\Security;
 use Swagger\Annotations as SWG;
 use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
+use Symfony\Component\Validator\Constraints;
 
 /**
  * @RouteResource("Project")
@@ -48,16 +51,21 @@ class ProjectController extends BaseApiController
      * @var EventDispatcherInterface
      */
     private $dispatcher;
+    /**
+     * @var UserDateTimeFactory
+     */
+    private $dateTime;
 
-    public function __construct(ViewHandlerInterface $viewHandler, ProjectRepository $repository, EventDispatcherInterface $dispatcher)
+    public function __construct(ViewHandlerInterface $viewHandler, ProjectRepository $repository, EventDispatcherInterface $dispatcher, UserDateTimeFactory $dateTime)
     {
         $this->viewHandler = $viewHandler;
         $this->repository = $repository;
         $this->dispatcher = $dispatcher;
+        $this->dateTime = $dateTime;
     }
 
     /**
-     * Returns a collection of projects
+     * Returns a collection of projects.
      *
      * @SWG\Response(
      *      response=200,
@@ -68,15 +76,18 @@ class ProjectController extends BaseApiController
      *      )
      * )
      * @Rest\QueryParam(name="customer", requirements="\d+", strict=true, nullable=true, description="Customer ID to filter projects")
-     * @Rest\QueryParam(name="visible", requirements="\d+", strict=true, nullable=true, description="Visibility status to filter projects (1=visible, 2=hidden, 3=both)")
+     * @Rest\QueryParam(name="visible", requirements="\d+", strict=true, nullable=true, description="Visibility status to filter projects. Allowed values: 1=visible, 2=hidden, 3=both (default; 1)")
+     * @Rest\QueryParam(name="start", requirements=@Constraints\DateTime(format="Y-m-d\TH:i:s"), strict=true, nullable=true, description="Only projects that started before this date will be included. Allowed format: HTML5 (default: now, if end is also empty)")
+     * @Rest\QueryParam(name="end", requirements=@Constraints\DateTime(format="Y-m-d\TH:i:s"), strict=true, nullable=true, description="Only projects that ended after this date will be included. Allowed format: HTML5 (default: now, if start is also empty)")
+     * @Rest\QueryParam(name="ignoreDates", requirements="1", strict=true, nullable=true, description="If set, start and end are completely ignored. Allowed values: 1 (default: off)")
      * @Rest\QueryParam(name="order", requirements="ASC|DESC", strict=true, nullable=true, description="The result order. Allowed values: ASC, DESC (default: ASC)")
      * @Rest\QueryParam(name="orderBy", requirements="id|name|customer", strict=true, nullable=true, description="The field by which results will be ordered. Allowed values: id, name, customer (default: name)")
      * @Rest\QueryParam(name="term", requirements="[a-zA-Z0-9 \-,:]+", strict=true, nullable=true, description="Free search term")
      *
-     * @param ParamFetcherInterface $paramFetcher
-     * @return Response
+     * @ApiSecurity(name="apiUser")
+     * @ApiSecurity(name="apiToken")
      */
-    public function cgetAction(ParamFetcherInterface $paramFetcher)
+    public function cgetAction(ParamFetcherInterface $paramFetcher): Response
     {
         $query = new ProjectQuery();
         $query->setCurrentUser($this->getUser());
@@ -95,6 +106,27 @@ class ProjectController extends BaseApiController
 
         if (null !== ($visible = $paramFetcher->get('visible'))) {
             $query->setVisibility($visible);
+        }
+
+        $ignoreDates = false;
+        if (null !== $paramFetcher->get('ignoreDates')) {
+            $ignoreDates = intval($paramFetcher->get('ignoreDates')) === 1;
+        }
+
+        if (!$ignoreDates) {
+            if (null !== ($begin = $paramFetcher->get('start')) && !empty($begin)) {
+                $query->setProjectStart($this->dateTime->createDateTime($begin));
+            }
+
+            if (null !== ($end = $paramFetcher->get('end')) && !empty($end)) {
+                $query->setProjectEnd($this->dateTime->createDateTime($end));
+            }
+
+            if (empty($begin) && empty($end)) {
+                $now = $this->dateTime->createDateTime();
+                $query->setProjectStart($now);
+                $query->setProjectEnd($now);
+            }
         }
 
         if (!empty($term = $paramFetcher->get('term'))) {
@@ -117,10 +149,10 @@ class ProjectController extends BaseApiController
      *      @SWG\Schema(ref="#/definitions/ProjectEntity"),
      * )
      *
-     * @param int $id
-     * @return Response
+     * @ApiSecurity(name="apiUser")
+     * @ApiSecurity(name="apiToken")
      */
-    public function getAction($id)
+    public function getAction(int $id): Response
     {
         $data = $this->repository->find($id);
 
@@ -152,13 +184,10 @@ class ProjectController extends BaseApiController
      *      @SWG\Schema(ref="#/definitions/ProjectEditForm")
      * )
      *
-     * @param Request $request
-     * @return Response
-     * @throws \App\Repository\RepositoryException
-     * @throws \Doctrine\ORM\ORMException
-     * @throws \Doctrine\ORM\OptimisticLockException
+     * @ApiSecurity(name="apiUser")
+     * @ApiSecurity(name="apiToken")
      */
-    public function postAction(Request $request)
+    public function postAction(Request $request): Response
     {
         if (!$this->isGranted('create_project')) {
             throw new AccessDeniedHttpException('User cannot create projects');
@@ -213,13 +242,10 @@ class ProjectController extends BaseApiController
      *      required=true,
      * )
      *
-     * @param Request $request
-     * @param string $id
-     * @return Response
-     * @throws \Doctrine\ORM\ORMException
-     * @throws \Doctrine\ORM\OptimisticLockException
+     * @ApiSecurity(name="apiUser")
+     * @ApiSecurity(name="apiToken")
      */
-    public function patchAction(Request $request, string $id)
+    public function patchAction(Request $request, int $id): Response
     {
         $project = $this->repository->find($id);
 
@@ -272,13 +298,10 @@ class ProjectController extends BaseApiController
      * @Rest\RequestParam(name="name", strict=true, nullable=false, description="The meta-field name")
      * @Rest\RequestParam(name="value", strict=true, nullable=false, description="The meta-field value")
      *
-     * @param int $id
-     * @param ParamFetcherInterface $paramFetcher
-     * @return Response
-     * @throws \Doctrine\ORM\ORMException
-     * @throws \Doctrine\ORM\OptimisticLockException
+     * @ApiSecurity(name="apiUser")
+     * @ApiSecurity(name="apiToken")
      */
-    public function metaAction($id, ParamFetcherInterface $paramFetcher)
+    public function metaAction(int $id, ParamFetcherInterface $paramFetcher): Response
     {
         $project = $this->repository->find($id);
 

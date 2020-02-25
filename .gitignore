@@ -1,11 +1,13 @@
 # ========== KIMAI ==========
-# IDE
 .idea/
+.DS_Store
 
 /bin/*
 !bin/console
 /config/packages/local.yaml
+/config/packages/*-local.yaml
 /config/packages/*/local.yaml
+/config/packages/*/*-local.yaml
 
 public/avatars/*.png
 
@@ -20,6 +22,8 @@ templates/invoice/renderer/.~lock*
 
 /var/invoices/*
 
+/var/packages/*
+!var/packages/.gitkeep
 /var/plugins/*
 !var/plugins/.gitkeep
 
@@ -35,10 +39,6 @@ templates/invoice/renderer/.~lock*
 /public/bundles/
 /vendor/
 ###< symfony/framework-bundle ###
-
-###> symfony/web-server-bundle ###
-.web-server-pid
-###< symfony/web-server-bundle ###
 
 ###> phpunit/phpunit ###
 /phpunit.xml

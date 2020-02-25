@@ -13,9 +13,11 @@ use App\Export\Renderer\XlsxRenderer;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 /**
+ * @covers \App\Export\Base\XlsxRenderer
+ * @covers \App\Export\Base\AbstractSpreadsheetRenderer
+ * @covers \App\Export\Base\RendererTrait
  * @covers \App\Export\Renderer\XlsxRenderer
  * @covers \App\Export\Renderer\AbstractSpreadsheetRenderer
- * @covers \App\Export\Renderer\RendererTrait
  * @group integration
  */
 class XlsxRendererTest extends AbstractRendererTest

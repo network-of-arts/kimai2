@@ -9,7 +9,6 @@
 
 namespace App\Form\Extension;
 
-use App\Configuration\ThemeConfiguration;
 use Symfony\Bridge\Doctrine\Form\Type\EntityType;
 use Symfony\Component\Form\AbstractTypeExtension;
 use Symfony\Component\Form\Extension\Core\Type\ChoiceType;
@@ -20,19 +19,12 @@ use Symfony\Component\OptionsResolver\OptionsResolver;
 /**
  * Converts normal select boxes into javascript enhanced versions.
  */
-class EnhancedChoiceTypeExtension extends AbstractTypeExtension
+final class EnhancedChoiceTypeExtension extends AbstractTypeExtension
 {
-    public const TYPE_SELECTPICKER = 'selectpicker';
-
     /**
-     * @var string|null
+     * @deprecated since 1.7 will be removed with 2.0
      */
-    protected $type = null;
-
-    public function __construct(ThemeConfiguration $configuration)
-    {
-        $this->type = $configuration->getSelectPicker();
-    }
+    public const TYPE_SELECTPICKER = 'selectpicker';
 
     public static function getExtendedTypes(): iterable
     {
@@ -46,10 +38,6 @@ class EnhancedChoiceTypeExtension extends AbstractTypeExtension
      */
     public function buildView(FormView $view, FormInterface $form, array $options)
     {
-        if ($this->type !== self::TYPE_SELECTPICKER) {
-            return;
-        }
-
         if (isset($options['selectpicker']) && false === $options['selectpicker']) {
             return;
         }
@@ -64,10 +52,12 @@ class EnhancedChoiceTypeExtension extends AbstractTypeExtension
             $view->vars['attr'] = [];
         }
 
-        $view->vars['attr'] = array_merge(
-            $view->vars['attr'],
-            ['class' => 'selectpicker', 'data-live-search' => true, 'data-width' => '100%']
-        );
+        $extendedOptions = ['class' => 'selectpicker', 'data-width' => '100%'];
+        if (!$options['search']) {
+            $extendedOptions['data-minimum-results-for-search'] = 'Infinity';
+        }
+
+        $view->vars['attr'] = array_merge($view->vars['attr'], $extendedOptions);
     }
 
     /**
@@ -78,5 +68,9 @@ class EnhancedChoiceTypeExtension extends AbstractTypeExtension
         $resolver->setDefined(['selectpicker']);
         $resolver->setAllowedTypes('selectpicker', 'boolean');
         $resolver->setDefault('selectpicker', true);
+
+        $resolver->setDefined(['search']);
+        $resolver->setAllowedTypes('search', 'boolean');
+        $resolver->setDefault('search', true);
     }
 }

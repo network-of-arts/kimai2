@@ -33,12 +33,14 @@ import KimaiAutocomplete from "./plugins/KimaiAutocomplete";
 import KimaiFormSelect from "./plugins/KimaiFormSelect";
 import KimaiForm from "./plugins/KimaiForm";
 import KimaiDatePicker from "./plugins/KimaiDatePicker";
+import KimaiConfirmationLink from "./plugins/KimaiConfirmationLink";
+import KimaiMultiUpdateTable from "./plugins/KimaiMultiUpdateTable";
 
 export default class KimaiLoader {
 
     constructor(configurations, translations) {
         // set the current locale for all javascript components
-        moment.locale(configurations['locale']);
+        moment.locale(configurations['locale'].replace('_', '-').toLowerCase());
 
         const kimai = new KimaiContainer(
             new KimaiConfiguration(configurations),
@@ -49,6 +51,7 @@ export default class KimaiLoader {
         kimai.registerPlugin(new KimaiAPI());
         kimai.registerPlugin(new KimaiAlert());
         kimai.registerPlugin(new KimaiFormSelect('.selectpicker'));
+        kimai.registerPlugin(new KimaiConfirmationLink('confirmation-link'));
         kimai.registerPlugin(new KimaiActiveRecordsDuration('[data-since]'));
         kimai.registerPlugin(new KimaiDatatableColumnView('data-column-visibility'));
         kimai.registerPlugin(new KimaiDateRangePicker('input[data-daterangepickerenable="on"]'));
@@ -65,6 +68,7 @@ export default class KimaiLoader {
         kimai.registerPlugin(new KimaiAutocomplete('.js-autocomplete'));
         kimai.registerPlugin(new KimaiForm());
         kimai.registerPlugin(new KimaiThemeInitializer());
+        kimai.registerPlugin(new KimaiMultiUpdateTable());
         //kimai.registerPlugin(new KimaiPauseRecord('li.messages-menu ul.menu li'));
 
         // notify all listeners that Kimai plugins can now be registered

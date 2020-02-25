@@ -22,7 +22,7 @@ class MarkdownExtensionTest extends TestCase
 {
     public function testGetFilters()
     {
-        $loader = $this->getMockBuilder(ConfigLoaderInterface::class)->getMock();
+        $loader = $this->createMock(ConfigLoaderInterface::class);
         $config = new TimesheetConfiguration($loader, ['markdown_content' => true]);
         $sut = new MarkdownExtension(new Markdown(), $config);
         $filters = $sut->getFilters();
@@ -34,7 +34,7 @@ class MarkdownExtensionTest extends TestCase
 
     public function testMarkdownToHtml()
     {
-        $loader = $this->getMockBuilder(ConfigLoaderInterface::class)->getMock();
+        $loader = $this->createMock(ConfigLoaderInterface::class);
         $config = new TimesheetConfiguration($loader, ['markdown_content' => true]);
         $sut = new MarkdownExtension(new Markdown(), $config);
         $this->assertEquals('<p><em>test</em></p>', $sut->markdownToHtml('*test*'));
@@ -43,7 +43,7 @@ class MarkdownExtensionTest extends TestCase
 
     public function testTimesheetContent()
     {
-        $loader = $this->getMockBuilder(ConfigLoaderInterface::class)->getMock();
+        $loader = $this->createMock(ConfigLoaderInterface::class);
         $config = new TimesheetConfiguration($loader, ['markdown_content' => false]);
         $sut = new MarkdownExtension(new Markdown(), $config);
         $this->assertEquals(
@@ -58,6 +58,35 @@ class MarkdownExtensionTest extends TestCase
         $this->assertEquals(
             "<ul>\n<li>test</li>\n<li>foo</li>\n</ul>\n<p>foo <strong>bar</strong></p>",
             $sut->timesheetContent("- test\n- foo\n\nfoo __bar__")
+        );
+    }
+
+    public function testCommentContent()
+    {
+        $loader = $this->createMock(ConfigLoaderInterface::class);
+        $config = new TimesheetConfiguration($loader, ['markdown_content' => false]);
+        $sut = new MarkdownExtension(new Markdown(), $config);
+        $this->assertEquals(
+            "<p>- test<br />\n- foo</p>",
+            $sut->commentContent("- test\n- foo", true)
+        );
+        $this->assertEquals(
+            "- test\n- foo",
+            $sut->commentContent("- test\n- foo", false)
+        );
+
+        $loremIpsum = 'Lorem ipsum dolor sit amet, consetetur sadipscing elitr, sed diam nonumy eirmod tempor invidunt ut labore et dolore magna aliquyam erat, sed diam voluptua.';
+
+        $this->assertEquals('', $sut->commentContent(null));
+        $this->assertEquals('', $sut->commentContent(''));
+        $this->assertEquals('<p>' . $loremIpsum . '</p>', $sut->commentContent($loremIpsum, true));
+        $this->assertEquals('Lorem ipsum dolor sit amet, consetetur sadipscing elitr, sed diam nonumy eirmod tempor invidunt ut l &hellip;', $sut->commentContent($loremIpsum));
+
+        $config = new TimesheetConfiguration($loader, ['markdown_content' => true]);
+        $sut = new MarkdownExtension(new Markdown(), $config);
+        $this->assertEquals(
+            "<ul>\n<li>test</li>\n<li>foo</li>\n</ul>\n<p>foo <strong>bar</strong></p>",
+            $sut->commentContent("- test\n- foo\n\nfoo __bar__")
         );
     }
 }

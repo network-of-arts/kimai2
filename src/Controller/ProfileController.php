@@ -10,6 +10,7 @@
 namespace App\Controller;
 
 use App\Entity\User;
+use App\Entity\UserPreference;
 use App\Event\PrepareUserEvent;
 use App\Form\UserApiTokenType;
 use App\Form\UserEditType;
@@ -17,8 +18,10 @@ use App\Form\UserPasswordType;
 use App\Form\UserPreferencesForm;
 use App\Form\UserRolesType;
 use App\Form\UserTeamsType;
+use App\Repository\TeamRepository;
 use App\Repository\TimesheetRepository;
 use App\Voter\UserVoter;
+use Doctrine\Common\Collections\ArrayCollection;
 use Sensio\Bundle\FrameworkExtraBundle\Configuration\Security;
 use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 use Symfony\Component\Form\FormInterface;
@@ -38,21 +41,21 @@ class ProfileController extends AbstractController
     /**
      * @var EventDispatcherInterface
      */
-    protected $dispatcher;
-
+    private $dispatcher;
     /**
      * @var UserPasswordEncoderInterface
      */
-    protected $encoder;
-
+    private $encoder;
     /**
-     * @param UserPasswordEncoderInterface $encoder
-     * @param EventDispatcherInterface $dispatcher
+     * @var TeamRepository
      */
-    public function __construct(UserPasswordEncoderInterface $encoder, EventDispatcherInterface $dispatcher)
+    private $teams;
+
+    public function __construct(UserPasswordEncoderInterface $encoder, EventDispatcherInterface $dispatcher, TeamRepository $teams)
     {
         $this->encoder = $encoder;
         $this->dispatcher = $dispatcher;
+        $this->teams = $teams;
     }
 
     /**
@@ -209,6 +212,13 @@ class ProfileController extends AbstractController
         $event = new PrepareUserEvent($profile);
         $this->dispatcher->dispatch($event);
 
+        /** @var \ArrayIterator $iterator */
+        $iterator = $profile->getPreferences()->getIterator();
+        $iterator->uasort(function (UserPreference $a, UserPreference $b) {
+            return ($a->getOrder() < $b->getOrder()) ? -1 : 1;
+        });
+        $profile->setPreferences(new ArrayCollection(iterator_to_array($iterator)));
+
         $original = [];
         foreach ($profile->getPreferences() as $preference) {
             $original[$preference->getName()] = $preference;
@@ -283,7 +293,7 @@ class ProfileController extends AbstractController
             $apiTokenForm = $apiTokenForm ?: $this->createApiTokenForm($user);
             $forms['api-token'] = $apiTokenForm->createView();
         }
-        if ($this->isGranted(UserVoter::TEAMS, $user)) {
+        if ($this->isGranted(UserVoter::TEAMS, $user) && $this->teams->count([]) > 0) {
             $teamsForm = $teamsForm ?: $this->createTeamsForm($user);
             $forms['teams'] = $teamsForm->createView();
         }
@@ -301,10 +311,6 @@ class ProfileController extends AbstractController
 
     private function createPreferencesForm(User $user): FormInterface
     {
-        // we need to prepare the user preferences, which is done via an EventSubscriber
-        $event = new PrepareUserEvent($user);
-        $this->dispatcher->dispatch($event);
-
         return $this->createForm(
             UserPreferencesForm::class,
             $user,

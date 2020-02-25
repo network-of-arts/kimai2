@@ -36,6 +36,7 @@ class AppExtensionTest extends TestCase
     private function getContainer()
     {
         $container = new ContainerBuilder();
+        $container->setParameter('app_locales', 'de|en|tr|zh_CN');
 
         return $container;
     }
@@ -44,6 +45,15 @@ class AppExtensionTest extends TestCase
     {
         return [
             'kimai' => [
+                'languages' => [
+                    'en' => [
+                        'date_type' => 'dd. MM. yyyy',
+                        'date' => 'A-m-d'
+                    ],
+                    'tr' => [
+                        'date' => 'X-m-d'
+                    ],
+                ],
                 'data_dir' => '/tmp/',
                 'plugin_dir' => '/tmp/',
                 'timesheet' => [],
@@ -60,7 +70,46 @@ class AppExtensionTest extends TestCase
         $expected = [
             'kimai.data_dir' => '/tmp/',
             'kimai.plugin_dir' => '/tmp/',
-            'kimai.languages' => [],
+            'kimai.languages' => [
+                'en' => [
+                    'date_time_type' => 'yyyy-MM-dd HH:mm',
+                    'date_type' => 'dd. MM. yyyy',
+                    'date' => 'A-m-d',
+                    'date_time' => 'm-d H:i',
+                    'duration' => '%%h:%%m h',
+                    'time' => 'H:i',
+                    '24_hours' => true,
+                ],
+                'de' => [
+                    'date_time_type' => 'yyyy-MM-dd HH:mm',
+                    'date_type' => 'dd. MM. yyyy',
+                    'date' => 'A-m-d',
+                    'date_time' => 'm-d H:i',
+                    'duration' => '%%h:%%m h',
+                    'time' => 'H:i',
+                    '24_hours' => true,
+                ],
+                'tr' => [
+                    'date_time_type' => 'yyyy-MM-dd HH:mm',
+                    // this value if pre-filled by the Configuration object, as "tr" is defined in the min config
+                    // and the other languages (not defined in min config) are "only" copied during runtime from "en"
+                    'date_type' => 'yyyy-MM-dd',
+                    'date' => 'X-m-d',
+                    'date_time' => 'm-d H:i',
+                    'duration' => '%%h:%%m h',
+                    'time' => 'H:i',
+                    '24_hours' => true,
+                ],
+                'zh_CN' => [
+                    'date_time_type' => 'yyyy-MM-dd HH:mm',
+                    'date_type' => 'dd. MM. yyyy',
+                    'date' => 'A-m-d',
+                    'date_time' => 'm-d H:i',
+                    'duration' => '%%h:%%m h',
+                    'time' => 'H:i',
+                    '24_hours' => true,
+                ],
+            ],
             'kimai.calendar' => [
                 'week_numbers' => true,
                 'day_limit' => 4,
@@ -129,7 +178,15 @@ class AppExtensionTest extends TestCase
             'kimai.timesheet' => [
                 'mode' => 'default',
                 'markdown_content' => false,
-                'rounding' => [],
+                'rounding' => [
+                    'default' => [
+                        'begin' => 1,
+                        'end' => 1,
+                        'duration' => 0,
+                        'mode' => 'default',
+                        'days' => 'monday,tuesday,wednesday,thursday,friday,saturday,sunday'
+                    ]
+                ],
                 'rates' => [],
                 'active_entries' => [
                     'soft_limit' => 1,
@@ -141,7 +198,15 @@ class AppExtensionTest extends TestCase
                 'default_begin' => 'now',
             ],
             'kimai.timesheet.rates' => [],
-            'kimai.timesheet.rounding' => [],
+            'kimai.timesheet.rounding' => [
+                    'default' => [
+                        'begin' => 1,
+                        'end' => 1,
+                        'duration' => 0,
+                        'mode' => 'default',
+                        'days' => 'monday,tuesday,wednesday,thursday,friday,saturday,sunday'
+                    ]
+            ],
             'kimai.ldap' => [
                 'user' => [
                     'baseDn' => null,
@@ -240,7 +305,7 @@ class AppExtensionTest extends TestCase
     public function testDurationOnlyDeprecationIsTriggered()
     {
         $this->expectException(Notice::class);
-        $this->expectExceptionMessage('Found ambiguous configuration. Please remove "kimai.timesheet.duration_only" and set "kimai.timesheet.mode" instead.');
+        $this->expectExceptionMessage('Found ambiguous configuration: remove "kimai.timesheet.duration_only" and set "kimai.timesheet.mode" instead.');
 
         $minConfig = $this->getMinConfig();
         $minConfig['kimai']['timesheet']['duration_only'] = true;
@@ -357,6 +422,44 @@ class AppExtensionTest extends TestCase
         $this->expectExceptionMessage('Found invalid "kimai" configuration: The child node "data_dir" at path "kimai" must be configured.');
 
         $this->extension->load([], $container = $this->getContainer());
+    }
+
+    public function testWithBundleConfiguration()
+    {
+        $bundleConfig = [
+            'foo-bundle' => ['test'],
+        ];
+        $container = $this->getContainer();
+        $container->setParameter('kimai.bundles.config', $bundleConfig);
+
+        $this->extension->load($this->getMinConfig(), $container);
+        $config = $container->getParameter('kimai.config');
+        self::assertEquals(['test'], $config['foo-bundle']);
+    }
+
+    public function testWithBundleConfigurationFailsOnDuplicatedKey()
+    {
+        $this->expectException(Notice::class);
+        $this->expectExceptionMessage('Invalid bundle configuration "timesheet" found, skipping');
+
+        $bundleConfig = [
+            'timesheet' => ['test'],
+        ];
+        $container = $this->getContainer();
+        $container->setParameter('kimai.bundles.config', $bundleConfig);
+
+        $this->extension->load($this->getMinConfig(), $container);
+    }
+
+    public function testWithBundleConfigurationFailsOnNonArray()
+    {
+        $this->expectException(Notice::class);
+        $this->expectExceptionMessage('Invalid bundle configuration found, skipping all bundle configuration');
+
+        $container = $this->getContainer();
+        $container->setParameter('kimai.bundles.config', 'asdasd');
+
+        $this->extension->load($this->getMinConfig(), $container);
     }
 
     // TODO test permissions

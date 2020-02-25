@@ -17,12 +17,15 @@ use FOS\RestBundle\Controller\Annotations\RouteResource;
 use FOS\RestBundle\Request\ParamFetcherInterface;
 use FOS\RestBundle\View\View;
 use FOS\RestBundle\View\ViewHandlerInterface;
+use Nelmio\ApiDocBundle\Annotation\Security as ApiSecurity;
 use Sensio\Bundle\FrameworkExtraBundle\Configuration\Security;
 use Swagger\Annotations as SWG;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
  * @RouteResource("Team")
+ *
+ * @Security("is_granted('IS_AUTHENTICATED_REMEMBERED')")
  */
 class TeamController extends BaseApiController
 {
@@ -55,9 +58,10 @@ class TeamController extends BaseApiController
      *
      * @Security("is_granted('view_team')")
      *
-     * @return Response
+     * @ApiSecurity(name="apiUser")
+     * @ApiSecurity(name="apiToken")
      */
-    public function cgetAction(ParamFetcherInterface $paramFetcher)
+    public function cgetAction(ParamFetcherInterface $paramFetcher): Response
     {
         $data = $this->repository->findAll();
 
@@ -76,10 +80,12 @@ class TeamController extends BaseApiController
      *      @SWG\Schema(ref="#/definitions/TeamEntity"),
      * )
      *
-     * @param int $id
-     * @return Response
+     * @Security("is_granted('view_team')")
+     *
+     * @ApiSecurity(name="apiUser")
+     * @ApiSecurity(name="apiToken")
      */
-    public function getAction($id)
+    public function getAction(int $id): Response
     {
         $data = $this->repository->find($id);
 
@@ -88,7 +94,7 @@ class TeamController extends BaseApiController
         }
 
         $view = new View($data, 200);
-        $view->getContext()->setGroups(['Default', 'Entity', 'Team']);
+        $view->getContext()->setGroups(['Default', 'Entity', 'Team', 'Team_Entity']);
 
         return $this->viewHandler->handle($view);
     }
@@ -112,10 +118,10 @@ class TeamController extends BaseApiController
      *
      * @Security("is_granted('delete_team')")
      *
-     * @param int $id
-     * @return Response
+     * @ApiSecurity(name="apiUser")
+     * @ApiSecurity(name="apiToken")
      */
-    public function deleteAction($id)
+    public function deleteAction(int $id): Response
     {
         $team = $this->repository->find($id);
 

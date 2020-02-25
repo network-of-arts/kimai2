@@ -11,6 +11,7 @@ namespace App\Export\Renderer;
 
 use App\Configuration\ExportConfiguration;
 use App\Entity\Timesheet;
+use App\Export\Base\PDFRenderer as BasePDFRenderer;
 use App\Export\RendererInterface;
 use App\Repository\Query\TimesheetQuery;
 use App\Timesheet\UserDateTimeFactory;
@@ -19,7 +20,7 @@ use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpFoundation\ResponseHeaderBag;
 use Twig\Environment;
 
-final class PDFRenderer implements RendererInterface
+final class PDFRenderer extends BasePDFRenderer implements RendererInterface
 {
     use RendererTrait;
 

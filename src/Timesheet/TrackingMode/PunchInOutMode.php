@@ -10,10 +10,21 @@
 namespace App\Timesheet\TrackingMode;
 
 use App\Entity\Timesheet;
+use App\Timesheet\UserDateTimeFactory;
 use Symfony\Component\HttpFoundation\Request;
 
-class PunchInOutMode implements TrackingModeInterface
+final class PunchInOutMode implements TrackingModeInterface
 {
+    /**
+     * @var UserDateTimeFactory
+     */
+    private $dateTime;
+
+    public function __construct(UserDateTimeFactory $dateTime)
+    {
+        $this->dateTime = $dateTime;
+    }
+
     public function canEditBegin(): bool
     {
         return false;
@@ -34,8 +45,11 @@ class PunchInOutMode implements TrackingModeInterface
         return false;
     }
 
-    public function create(Timesheet $timesheet, Request $request): void
+    public function create(Timesheet $timesheet, ?Request $request = null): void
     {
+        if (null === $timesheet->getBegin()) {
+            $timesheet->setBegin($this->dateTime->createDateTime());
+        }
     }
 
     public function getId(): string

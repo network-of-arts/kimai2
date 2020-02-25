@@ -18,6 +18,7 @@ use App\Entity\User;
 use App\Invoice\Calculator\UserInvoiceCalculator;
 use App\Invoice\InvoiceModel;
 use App\Repository\Query\InvoiceQuery;
+use App\Tests\Invoice\DebugFormatter;
 
 /**
  * @covers \App\Invoice\Calculator\UserInvoiceCalculator
@@ -40,13 +41,13 @@ class UserInvoiceCalculatorTest extends AbstractCalculatorTest
         $activity = new Activity();
         $activity->setName('activity description');
 
-        $user1 = $this->getMockBuilder(User::class)->setMethods(['getId'])->disableOriginalConstructor()->getMock();
+        $user1 = $this->getMockBuilder(User::class)->onlyMethods(['getId'])->disableOriginalConstructor()->getMock();
         $user1->method('getId')->willReturn(1);
 
-        $user2 = $this->getMockBuilder(User::class)->setMethods(['getId'])->disableOriginalConstructor()->getMock();
+        $user2 = $this->getMockBuilder(User::class)->onlyMethods(['getId'])->disableOriginalConstructor()->getMock();
         $user2->method('getId')->willReturn(2);
 
-        $user3 = $this->getMockBuilder(User::class)->setMethods(['getId'])->disableOriginalConstructor()->getMock();
+        $user3 = $this->getMockBuilder(User::class)->onlyMethods(['getId'])->disableOriginalConstructor()->getMock();
         $user3->method('getId')->willReturn(3);
 
         $timesheet = new Timesheet();
@@ -104,7 +105,7 @@ class UserInvoiceCalculatorTest extends AbstractCalculatorTest
         $query = new InvoiceQuery();
         $query->setActivity($activity);
 
-        $model = new InvoiceModel();
+        $model = new InvoiceModel(new DebugFormatter());
         $model->setCustomer($customer);
         $model->setTemplate($template);
         $model->setEntries($entries);
